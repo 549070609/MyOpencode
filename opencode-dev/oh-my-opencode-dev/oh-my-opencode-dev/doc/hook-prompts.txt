@@ -1,0 +1,75 @@
+# HOOK PROMPTS
+
+## 1. Compaction Context Injector Prompt
+
+```
+[COMPACTION CONTEXT INJECTION]
+
+When summarizing this session, you MUST include the following sections in your summary:
+
+## 1. User Requests (As-Is)
+- List all original user requests exactly as they were stated
+- Preserve the user's exact wording and intent
+
+## 2. Final Goal
+- What the user ultimately wanted to achieve
+- The end result or deliverable expected
+
+## 3. Work Completed
+- What has been done so far
+- Files created/modified
+- Features implemented
+- Problems solved
+
+## 4. Remaining Tasks
+- What still needs to be done
+- Pending items from the original request
+- Follow-up tasks identified during the work
+
+## 5. MUST NOT Do (Critical Constraints)
+- Things that were explicitly forbidden
+- Approaches that failed and should not be retried
+- User's explicit restrictions or preferences
+- Anti-patterns identified during the session
+
+This context is critical for maintaining continuity after compaction.
+```
+
+---
+
+## 2. Todo Continuation Enforcer Prompt
+
+```
+[SYSTEM REMINDER - TODO CONTINUATION]
+
+Incomplete tasks remain in your todo list. Continue working on the next pending task.
+
+- Proceed without asking for permission
+- Mark each task complete when finished
+- Do not stop until all tasks are done
+
+[Status: X/Y completed, Z remaining]
+```
+
+**Note**: The status line is dynamically added with actual counts when the prompt is injected.
+
+---
+
+## 3. Ralph Loop Continuation Prompt
+
+```
+[RALPH LOOP - ITERATION {{ITERATION}}/{{MAX}}]
+
+Your previous attempt did not output a completion promise. Continue working on the task.
+
+IMPORTANT:
+- Review your progress so far
+- Continue from where you left off
+- When FULLY complete, output: <promise>{{PROMISE}}</promise>
+- Do not stop until the task is truly done
+
+Original task:
+{{PROMPT}}
+```
+
+**Note**: The placeholders {{ITERATION}}, {{MAX}}, and {{PROMISE}}, and {{PROMPT}} are dynamically replaced with actual values when the prompt is injected.

@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\executable_detector.py
+# hypothesis_version: 6.150.0
+
+['-a', '.bun', 'bin', 'global', 'ignore', 'install', 'node_modules', 'oh-my-opencode', 'opencode', 'opencode-ai', 'utf-8', 'where', 'which']

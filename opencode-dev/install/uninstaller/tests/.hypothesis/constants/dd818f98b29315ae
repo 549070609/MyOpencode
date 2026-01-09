@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\package_manager.py
+# hypothesis_version: 6.150.0
+
+['--version', '-g', '-y', 'bun', 'check_cmd', 'choco', 'global', 'ignore', 'no such', 'not found', 'not installed', 'not_installed', 'npm', 'oh-my-opencode', 'opencode', 'opencode-ai', 'pnpm', 'remove', 'scoop', 'timeout', 'uninstall', 'uninstall_cmds', 'unsupported', 'utf-8', 'yarn']

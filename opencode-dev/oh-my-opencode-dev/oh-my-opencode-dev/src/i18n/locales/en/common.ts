@@ -1,0 +1,18 @@
+export const commonEn = {
+  yes: "Yes",
+  no: "No",
+  ok: "OK",
+  cancel: "Cancel",
+  continue: "Continue",
+  skip: "Skip",
+  done: "Done",
+  error: "Error",
+  warning: "Warning",
+  info: "Info",
+  success: "Success",
+  loading: "Loading...",
+  processing: "Processing...",
+  saving: "Saving...",
+  saved: "Saved",
+  failed: "Failed",
+}

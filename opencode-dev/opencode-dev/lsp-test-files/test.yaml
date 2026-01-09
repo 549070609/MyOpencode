@@ -1,0 +1,11 @@
+person:
+  name: Alice
+  age: 30
+  greeting: Hello, Alice!
+
+settings:
+  enabled: true
+  version: 1.0
+  features:
+    - greeting
+    - validation

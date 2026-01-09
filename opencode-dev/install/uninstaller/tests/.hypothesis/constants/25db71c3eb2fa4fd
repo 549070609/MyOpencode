@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\main.py
+# hypothesis_version: 6.150.0
+
+['\n  是否删除这些目录？(y/n): ', '\n⚠ 预览模式 - 不会实际删除任何文件', '\n【包管理器卸载】', '\n【数据目录】', '\n【检测可执行文件】', '\n【缓存目录】', '\n【配置目录】', '\n【项目 .opencode 目录】', '\n已取消卸载操作。', '\n此操作将删除:', '  - opencode 可执行文件', '  - opencode 缓存和数据目录', '  - opencode 配置目录', '  已跳过配置目录删除', '  已跳过项目目录删除', '  已跳过项目目录扫描', '  未找到 .opencode 目录', '  未找到 opencode 可执行文件', '  未找到数据目录', '  未找到缓存目录', '  未找到配置目录', '  未输入路径，跳过扫描', '  请输入要扫描的根目录路径: ', '--dry-run', '-n', ':', '=', 'OpenCode 彻底删除工具', '__main__', 'y', 'yes', '是', '未知错误', '确定', '确定要继续吗？(y/n): ']

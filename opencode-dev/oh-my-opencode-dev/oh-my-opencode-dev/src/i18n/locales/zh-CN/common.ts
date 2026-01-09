@@ -1,0 +1,18 @@
+export const commonZhCN = {
+  yes: "是",
+  no: "否",
+  ok: "确定",
+  cancel: "取消",
+  continue: "继续",
+  skip: "跳过",
+  done: "完成",
+  error: "错误",
+  warning: "警告",
+  info: "信息",
+  success: "成功",
+  loading: "加载中...",
+  processing: "处理中...",
+  saving: "保存中...",
+  saved: "已保存",
+  failed: "失败",
+}

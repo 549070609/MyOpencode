@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\platform_detector.py
+# hypothesis_version: 6.150.0
+
+['.bat', '.bun', '.cache', '.cmd', '.config', '.exe', '.local', '.npm-global', '.opencode', '.ps1', '.yarn', '/usr/local/bin', 'APPDATA', 'AppData', 'Application Support', 'Caches', 'Data', 'LOCALAPPDATA', 'Library', 'Local', 'PNPM_HOME', 'Roaming', 'TEMP', 'Temp', 'XDG_CACHE_HOME', 'XDG_DATA_HOME', 'Yarn', 'bin', 'cache', 'cygwin', 'darwin', 'data', 'global', 'install', 'lib', 'linux', 'macos', 'node_modules', 'npm', 'opencode', 'opencode-nodejs', 'pnpm', 'share', 'win32', 'windows', 'yarn', '~']

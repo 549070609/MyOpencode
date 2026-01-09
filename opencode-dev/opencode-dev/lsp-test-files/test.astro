@@ -1,0 +1,19 @@
+---
+const name = "Alice";
+const age = 30;
+
+function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+---
+
+<html lang="en">
+<head>
+  <title>Test Astro</title>
+</head>
+<body>
+  <h1>{greet(name)}</h1>
+  <p>Name: {name}</p>
+  <p>Age: {age}</p>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\models.py
+# hypothesis_version: 6.150.0
+
+['\n【包管理器卸载】', '\n【可执行文件】', '\n【数据目录】', '\n【缓存目录】', '\n【配置目录】', '\n【项目 .opencode 目录】', '  - 用户跳过扫描', '=', 'OpenCode 卸载报告']

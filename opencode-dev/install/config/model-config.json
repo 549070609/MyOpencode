@@ -1,0 +1,22 @@
+{
+  "api_url": "https://integrate.api.nvidia.com/v1",
+  "api_key": "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",
+  "model_name": "moonshotai/kimi-k2-thinking",
+  "provider_name": "NVIDIA API",
+  "env_var_name": "NVIDIA_API_KEY",
+  "model_display_name": "Kimi K2 Thinking",
+  "model_features": {
+    "temperature": true,
+    "tool_call": true,
+    "attachment": false,
+    "reasoning": true
+  },
+  "model_limits": {
+    "context": 200000,
+    "output": 8192
+  },
+  "model_cost": {
+    "input": 0.002,
+    "output": 0.004
+  }
+}

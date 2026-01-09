@@ -1,0 +1,4 @@
+# file: D:\localproject\prototypeDesign\openCode\opencode-dev\uninstaller\project_scanner.py
+# hypothesis_version: 6.150.0
+
+['.', '.env', '.git', '.hg', '.next', '.nuxt', '.opencode', '.svn', '.venv', '__pycache__', 'build', 'dist', 'env', 'node_modules', 'target', 'vendor', 'venv']

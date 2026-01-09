@@ -1,0 +1,48 @@
+// 配置示例文件 - 选择一个示例复制到 model-config.json
+
+// ========================================
+// 示例 1: OpenAI GPT-4o（推荐）
+// ========================================
+{
+  "api_url": "https://api.openai.com/v1",
+  "api_key": "sk-proj-your-openai-key-here",
+  "model_name": "gpt-4o"
+}
+
+// ========================================
+// 示例 2: NVIDIA API Llama 模型
+// ========================================
+{
+  "api_url": "https://integrate.api.nvidia.com/v1",
+  "api_key": "nvapi-your-nvidia-key-here",
+  "model_name": "meta/llama-3.1-nemotron-70b-instruct",
+  "provider_name": "NVIDIA API",
+  "model_display_name": "Llama 3.1 Nemotron 70B"
+}
+
+// ========================================
+// 示例 3: 本地 Ollama 模型
+// ========================================
+{
+  "api_url": "http://localhost:11434/v1",
+  "api_key": "ollama",
+  "model_name": "llama3.2",
+  "provider_name": "Ollama Local"
+}
+
+// ========================================
+// 示例 4: OpenAI GPT-4o Mini（经济版）
+// ========================================
+{
+  "api_url": "https://api.openai.com/v1",
+  "api_key": "sk-proj-your-openai-key-here",
+  "model_name": "gpt-4o-mini"
+}
+
+// ========================================
+// 使用方法：
+// 1. 选择一个示例
+// 2. 复制到 model-config.json
+// 3. 修改 api_key 为你的真实密钥
+// 4. 运行: py create_doc.py config
+// ========================================

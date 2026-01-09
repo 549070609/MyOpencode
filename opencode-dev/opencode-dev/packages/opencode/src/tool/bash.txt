@@ -1,0 +1,116 @@
+在持久的 shell 会话中执行给定的 bash 命令，支持可选超时设置，确保正确处理和安全措施。
+
+所有命令默认在 ${directory} 目录中运行。如果需要在其他目录中运行命令，请使用 `workdir` 参数。避免使用 `cd <directory> && <command>` 模式 - 请改用 `workdir` 参数。
+
+重要说明：此工具用于终端操作，如 git、npm、docker 等。不要用于文件操作（读取、写入、编辑、搜索、查找文件）- 请为此使用专门的工具。
+
+执行命令前，请遵循以下步骤：
+
+1. 目录验证：
+   - 如果命令将创建新目录或文件，首先使用 `ls` 验证父目录存在且位置正确
+   - 例如，在运行 "mkdir foo/bar" 之前，首先使用 `ls foo` 检查 "foo" 存在且是预期的父目录
+
+2. 命令执行：
+   - 始终用双引号引用包含空格的文件路径（例如：rm "path with spaces/file.txt"）
+   - 正确引用的示例：
+     - mkdir "/Users/name/My Documents"（正确）
+     - mkdir /Users/name/My Documents（错误 - 会失败）
+     - python "/path/with spaces/script.py"（正确）
+     - python /path/with spaces/script.py（错误 - 会失败）
+   - 确保正确引用后，执行命令。
+   - 捕获命令的输出。
+
+使用说明：
+  - command 参数是必需的。
+  - 您可以指定可选的超时时间（以毫秒为单位，最多 600000ms / 10 分钟）。如果未指定，命令将在 120000ms（2 分钟）后超时。
+  - 如果您能写一个清晰、简洁的命令描述（5-10 个字），会很有帮助。
+  - 如果输出超过 30000 个字符，输出将在返回给您之前被截断。
+  - 您可以使用 `run_in_background` 参数在后台运行命令，这允许您在命令运行时继续工作。您可以使用 Bash 工具监控输出，因为它变得可用。使用此参数时，您不需要在命令末尾使用 '&'。
+
+  - 避免使用 Bash 执行 `find`、`grep`、`cat`、`head`、`tail`、`sed`、`awk` 或 `echo` 命令，除非明确指示或这些命令对任务真正必要。相反，始终优先使用这些命令的专用工具：
+    - 文件搜索：使用 Glob（而不是 find 或 ls）
+    - 内容搜索：使用 Grep（而不是 grep 或 rg）
+    - 读取文件：使用 Read（而不是 cat/head/tail）
+    - 编辑文件：使用 Edit（而不是 sed/awk）
+    - 写入文件：使用 Write（而不是 echo >/cat <<EOF）
+    - 通信：直接输出文本（而不是 echo/printf）
+  - 发出多个命令时：
+    - 如果命令是独立的且可以并行运行，在单条消息中进行多个 Bash 工具调用。例如，如果您需要运行 "git status" 和 "git diff"，发送一条包含两个并行 Bash 工具调用的消息。
+    - 如果命令相互依赖且必须顺序运行，使用单个 Bash 调用与 '&&' 链接它们（例如：`git add . && git commit -m "message" && git push`）。例如，如果一个操作必须在另一个操作之前完成（如 mkdir 在 cp 之前，Write 在 Bash git 操作之前，或 git add 在 git commit 之前），则顺序运行这些操作。
+    - 仅当您需要顺序运行命令但不关心早期命令是否失败时才使用 ';'
+    - 不要使用换行符分隔命令（在引用的字符串中换行是可以的）
+  - 避免使用 `cd <directory> && <command>`。使用 `workdir` 参数更改目录。
+    <good-example>
+    使用 workdir="/foo/bar" 配合命令：pytest tests
+    </good-example>
+    <bad-example>
+    cd /foo/bar && pytest tests
+    </bad-example>
+
+# Committing changes with git
+
+Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully:
+
+Git Safety Protocol:
+- NEVER update the git config
+- NEVER run destructive/irreversible git commands (like push --force, hard reset, etc) unless the user explicitly requests them
+- NEVER skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it
+- NEVER run force push to main/master, warn the user if they request it
+- Avoid git commit --amend. ONLY use --amend when ALL conditions are met:
+  (1) User explicitly requested amend, OR commit SUCCEEDED but pre-commit hook auto-modified files that need including
+  (2) HEAD commit was created by you in this conversation (verify: git log -1 --format='%an %ae')
+  (3) Commit has NOT been pushed to remote (verify: git status shows "Your branch is ahead")
+- CRITICAL: If commit FAILED or was REJECTED by hook, NEVER amend - fix the issue and create a NEW commit
+- CRITICAL: If you already pushed to remote, NEVER amend unless user explicitly requests it (requires force push)
+- NEVER commit changes unless the user explicitly asks you to. It is VERY IMPORTANT to only commit when explicitly asked, otherwise the user will feel that you are being too proactive.
+
+1. You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. run the following bash commands in parallel, each using the Bash tool:
+  - Run a git status command to see all untracked files.
+  - Run a git diff command to see both staged and unstaged changes that will be committed.
+  - Run a git log command to see recent commit messages, so that you can follow this repository's commit message style.
+2. Analyze all staged changes (both previously staged and newly added) and draft a commit message:
+  - Summarize the nature of the changes (eg. new feature, enhancement to an existing feature, bug fix, refactoring, test, docs, etc.). Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.).
+  - Do not commit files that likely contain secrets (.env, credentials.json, etc.). Warn the user if they specifically request to commit those files
+  - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
+  - Ensure it accurately reflects the changes and their purpose
+3. You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. run the following commands:
+   - Add relevant untracked files to the staging area.
+   - Create the commit with a message
+   - Run git status after the commit completes to verify success.
+   Note: git status depends on the commit completing, so run it sequentially after the commit.
+4. If the commit fails due to pre-commit hook, fix the issue and create a NEW commit (see amend rules above)
+
+Important notes:
+- NEVER run additional commands to read or explore code, besides git bash commands
+- NEVER use the TodoWrite or Task tools
+- DO NOT push to the remote repository unless the user explicitly asks you to do so
+- IMPORTANT: Never use git commands with the -i flag (like git rebase -i or git add -i) since they require interactive input which is not supported.
+- If there are no changes to commit (i.e., no untracked files and no modifications), do not create an empty commit
+
+# Creating pull requests
+Use the gh command via the Bash tool for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases. If given a Github URL use the gh command to get the information needed.
+
+IMPORTANT: When the user asks you to create a pull request, follow these steps carefully:
+
+1. You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. run the following bash commands in parallel using the Bash tool, in order to understand the current state of the branch since it diverged from the main branch:
+   - Run a git status command to see all untracked files
+   - Run a git diff command to see both staged and unstaged changes that will be committed
+   - Check if the current branch tracks a remote branch and is up to date with the remote, so you know if you need to push to the remote
+   - Run a git log command and `git diff [base-branch]...HEAD` to understand the full commit history for the current branch (from the time it diverged from the base branch)
+2. Analyze all changes that will be included in the pull request, making sure to look at all relevant commits (NOT just the latest commit, but ALL commits that will be included in the pull request!!!), and draft a pull request summary
+3. You can call multiple tools in a single response. When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance. run the following commands in parallel:
+   - Create new branch if needed
+   - Push to remote with -u flag if needed
+   - Create PR using gh pr create with the format below. Use a HEREDOC to pass the body to ensure correct formatting.
+<example>
+gh pr create --title "the pr title" --body "$(cat <<'EOF'
+## Summary
+<1-3 bullet points>
+</example>
+
+Important:
+- DO NOT use the TodoWrite or Task tools
+- Return the PR URL when you're done, so the user can see it
+
+# Other common operations
+- View comments on a Github PR: gh api repos/foo/bar/pulls/123/comments
