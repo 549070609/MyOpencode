@@ -9,10 +9,27 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
   name: "GlobalSDK",
   init: () => {
     const server = useServer()
+    const platform = usePlatform()
     const abort = new AbortController()
 
+    const url = server.url
+    console.log("[GlobalSDK] Initializing...")
+    console.log("[GlobalSDK] server.url:", url)
+    console.log("[GlobalSDK] server.ready():", server.ready())
+    console.log("[GlobalSDK] server.healthy():", server.healthy())
+
+    if (!url) {
+      console.error("[GlobalSDK] ERROR: No server URL available!")
+    }
+
+    // For localhost requests, use native fetch as tauriFetch has issues with localhost
+    const isLocalhost = url?.includes("127.0.0.1") || url?.includes("localhost")
+    const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
+    console.log("[GlobalSDK] Using fetch:", isLocalhost ? "native (localhost)" : "platform")
+
     const eventSdk = createOpencodeClient({
-      baseUrl: server.url,
+      baseUrl: url,
+      fetch: fetchFn,
       signal: abort.signal,
     })
     const emitter = createGlobalEmitter<{
@@ -64,39 +81,46 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
     }
 
     void (async () => {
-      const events = await eventSdk.global.event()
-      let yielded = Date.now()
-      for await (const event of events.stream) {
-        const directory = event.directory ?? "global"
-        const payload = event.payload
-        const k = key(directory, payload)
-        if (k) {
-          const i = coalesced.get(k)
-          if (i !== undefined) {
-            queue[i] = undefined
+      console.log("[GlobalSDK] Starting event stream connection...")
+      try {
+        const events = await eventSdk.global.event()
+        console.log("[GlobalSDK] Event stream connected")
+        let yielded = Date.now()
+        for await (const event of events.stream) {
+          const directory = event.directory ?? "global"
+          const payload = event.payload
+          const k = key(directory, payload)
+          if (k) {
+            const i = coalesced.get(k)
+            if (i !== undefined) {
+              queue[i] = undefined
+            }
+            coalesced.set(k, queue.length)
           }
-          coalesced.set(k, queue.length)
-        }
-        queue.push({ directory, payload })
-        schedule()
+          queue.push({ directory, payload })
+          schedule()
 
-        if (Date.now() - yielded < 8) continue
-        yielded = Date.now()
-        await new Promise<void>((resolve) => setTimeout(resolve, 0))
+          if (Date.now() - yielded < 8) continue
+          yielded = Date.now()
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        }
+      } catch (err) {
+        console.warn("[GlobalSDK] Event stream error:", err)
       }
     })()
       .finally(stop)
-      .catch(() => undefined)
+      .catch((err) => {
+        console.warn("[GlobalSDK] Event stream connection failed:", err)
+      })
 
     onCleanup(() => {
       abort.abort()
       stop()
     })
 
-    const platform = usePlatform()
     const sdk = createOpencodeClient({
       baseUrl: server.url,
-      fetch: platform.fetch,
+      fetch: fetchFn,
       throwOnError: true,
     })
 

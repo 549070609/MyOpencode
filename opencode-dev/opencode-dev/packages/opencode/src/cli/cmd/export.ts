@@ -22,7 +22,7 @@ export const ExportCommand = cmd({
 
       if (!sessionID) {
         UI.empty()
-        prompts.intro("Export session", {
+        prompts.intro("导出会话", {
           output: process.stderr,
         })
 
@@ -32,10 +32,10 @@ export const ExportCommand = cmd({
         }
 
         if (sessions.length === 0) {
-          prompts.log.error("No sessions found", {
+          prompts.log.error("未找到会话", {
             output: process.stderr,
           })
-          prompts.outro("Done", {
+          prompts.outro("完成", {
             output: process.stderr,
           })
           return
@@ -44,7 +44,7 @@ export const ExportCommand = cmd({
         sessions.sort((a, b) => b.time.updated - a.time.updated)
 
         const selectedSession = await prompts.autocomplete({
-          message: "Select session to export",
+          message: "选择要导出的会话",
           maxItems: 10,
           options: sessions.map((session) => ({
             label: session.title,
@@ -60,7 +60,7 @@ export const ExportCommand = cmd({
 
         sessionID = selectedSession as string
 
-        prompts.outro("Exporting session...", {
+        prompts.outro("正在导出会话...", {
           output: process.stderr,
         })
       }
@@ -80,7 +80,7 @@ export const ExportCommand = cmd({
         process.stdout.write(JSON.stringify(exportData, null, 2))
         process.stdout.write(EOL)
       } catch (error) {
-        UI.error(`Session not found: ${sessionID!}`)
+        UI.error(`未找到会话: ${sessionID!}`)
         process.exit(1)
       }
     })

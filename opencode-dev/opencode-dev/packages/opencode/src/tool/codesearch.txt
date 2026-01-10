@@ -1,12 +1,17 @@
-- Search and get relevant context for any programming task using Exa Code API
-- Provides the highest quality and freshest context for libraries, SDKs, and APIs
-- Use this tool for ANY question or task related to programming
-- Returns comprehensive code examples, documentation, and API references
-- Optimized for finding specific programming patterns and solutions
+使用语义搜索在代码库中查找代码的强大搜索工具。
 
-Usage notes:
-  - Adjustable token count (1000-50000) for focused or comprehensive results
-  - Default 5000 tokens provides balanced context for most queries
-  - Use lower values for specific questions, higher values for comprehensive documentation
-  - Supports queries about frameworks, libraries, APIs, and programming concepts
-  - Examples: 'React useState hook examples', 'Python pandas dataframe filtering', 'Express.js middleware'
+何时使用此工具：
+- 探索不熟悉的代码库
+- 提出"如何/在哪里/是什么"问题以理解行为
+- 按含义而非精确文本查找代码
+
+何时不使用：
+1. 精确文本匹配（使用 Grep）
+2. 读取已知文件（使用 Read）
+3. 简单符号查找（使用 Grep）
+4. 按名称查找文件（使用 Glob）
+
+使用说明：
+- 提供一个关于您想了解什么的完整问题
+- 像与同事交谈一样提问："X 是如何工作的？"、"Y 发生时会怎样？"、"Z 在哪里处理？"
+- 结果按相关性排序

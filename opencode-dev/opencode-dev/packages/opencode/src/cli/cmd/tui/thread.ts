@@ -58,7 +58,7 @@ export const TuiThreadCommand = cmd({
     try {
       process.chdir(cwd)
     } catch (e) {
-      UI.error("Failed to change directory to " + cwd)
+      UI.error("切换目录失败: " + cwd)
       return
     }
 

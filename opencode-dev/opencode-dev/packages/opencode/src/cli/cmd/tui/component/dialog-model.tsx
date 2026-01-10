@@ -56,9 +56,9 @@ export function DialogModel(props: { providerID?: string }) {
           },
           title: model.name ?? item.modelID,
           description: provider.name,
-          category: "Favorites",
+          category: "收藏",
           disabled: provider.id === "opencode" && model.id.includes("-nano"),
-          footer: model.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+          footer: model.cost?.input === 0 && provider.id === "opencode" ? "免费" : undefined,
           onSelect: () => {
             dialog.clear()
             local.model.set(
@@ -87,9 +87,9 @@ export function DialogModel(props: { providerID?: string }) {
           },
           title: model.name ?? item.modelID,
           description: provider.name,
-          category: "Recent",
+          category: "最近使用",
           disabled: provider.id === "opencode" && model.id.includes("-nano"),
-          footer: model.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+          footer: model.cost?.input === 0 && provider.id === "opencode" ? "免费" : undefined,
           onSelect: () => {
             dialog.clear()
             local.model.set(
@@ -127,11 +127,11 @@ export function DialogModel(props: { providerID?: string }) {
               description: favorites.some(
                 (item) => item.providerID === value.providerID && item.modelID === value.modelID,
               )
-                ? "(Favorite)"
+                ? "(收藏)"
                 : undefined,
               category: connected() ? provider.name : undefined,
               disabled: provider.id === "opencode" && model.includes("-nano"),
-              footer: info.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
+              footer: info.cost?.input === 0 && provider.id === "opencode" ? "免费" : undefined,
               onSelect() {
                 dialog.clear()
                 local.model.set(
@@ -157,7 +157,7 @@ export function DialogModel(props: { providerID?: string }) {
             return true
           }),
           sortBy(
-            (x) => x.footer !== "Free",
+            (x) => x.footer !== "免费",
             (x) => x.title,
           ),
         ),
@@ -170,7 +170,7 @@ export function DialogModel(props: { providerID?: string }) {
           map((option) => {
             return {
               ...option,
-              category: "Popular providers",
+              category: "热门提供商",
             }
           }),
           take(6),
@@ -198,7 +198,7 @@ export function DialogModel(props: { providerID?: string }) {
 
   const title = createMemo(() => {
     if (provider()) return provider()!.name
-    return "Select model"
+    return "选择模型"
   })
 
   return (
@@ -206,14 +206,14 @@ export function DialogModel(props: { providerID?: string }) {
       keybind={[
         {
           keybind: Keybind.parse("ctrl+a")[0],
-          title: connected() ? "Connect provider" : "View all providers",
+          title: connected() ? "连接提供商" : "查看所有提供商",
           onTrigger() {
             dialog.replace(() => <DialogProvider />)
           },
         },
         {
           keybind: Keybind.parse("ctrl+f")[0],
-          title: "Favorite",
+          title: "收藏",
           disabled: !connected(),
           onTrigger: (option) => {
             local.model.toggleFavorite(option.value as { providerID: string; modelID: string })

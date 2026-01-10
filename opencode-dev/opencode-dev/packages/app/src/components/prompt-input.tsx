@@ -261,7 +261,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const [composing, setComposing] = createSignal(false)
-  const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing() || event.keyCode === 229
+  // Note: event.keyCode === 229 check is intentionally removed as it causes issues
+  // in Tauri WebView2 on Windows where Enter key is incorrectly blocked.
+  // event.isComposing and composing() signal are sufficient for proper IME detection.
+  const isImeComposing = (event: KeyboardEvent) => event.isComposing || composing()
 
   const addImageAttachment = async (file: File) => {
     if (!ACCEPTED_FILE_TYPES.includes(file.type)) return
@@ -346,6 +349,29 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     }
   }
 
+  // Store event handler references for cleanup
+  const compositionStartHandler = () => setComposing(true)
+  const compositionEndHandler = () => setComposing(false)
+  
+  // Setup editor event listeners - called from ref callback to ensure element exists
+  const setupEditorListeners = (el: HTMLDivElement) => {
+    console.log("[setupEditorListeners] Adding native event listeners to editor element")
+    el.addEventListener("input", handleInput)
+    el.addEventListener("keydown", handleKeyDown)
+    el.addEventListener("paste", handlePaste as unknown as EventListener)
+    el.addEventListener("compositionstart", compositionStartHandler)
+    el.addEventListener("compositionend", compositionEndHandler)
+  }
+  
+  const cleanupEditorListeners = (el: HTMLDivElement) => {
+    console.log("[cleanupEditorListeners] Removing event listeners from editor element")
+    el.removeEventListener("input", handleInput)
+    el.removeEventListener("keydown", handleKeyDown)
+    el.removeEventListener("paste", handlePaste as unknown as EventListener)
+    el.removeEventListener("compositionstart", compositionStartHandler)
+    el.removeEventListener("compositionend", compositionEndHandler)
+  }
+
   onMount(() => {
     document.addEventListener("dragover", handleGlobalDragOver)
     document.addEventListener("dragleave", handleGlobalDragLeave)
@@ -355,6 +381,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     document.removeEventListener("dragover", handleGlobalDragOver)
     document.removeEventListener("dragleave", handleGlobalDragLeave)
     document.removeEventListener("drop", handleGlobalDrop)
+    
+    if (editorRef) {
+      cleanupEditorListeners(editorRef)
+    }
   })
 
   createEffect(() => {
@@ -945,7 +975,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       return
     }
     if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault()
       handleSubmit(event)
+      return
     }
     if (event.key === "Escape") {
       if (store.popover) {
@@ -1027,9 +1059,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       }
 
       if (sessionDirectory !== projectDirectory) {
+        // For localhost requests, use native fetch as tauriFetch has issues with localhost
+        const isLocalhost = sdk.url?.includes("127.0.0.1") || sdk.url?.includes("localhost")
+        const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
         client = createOpencodeClient({
           baseUrl: sdk.url,
-          fetch: platform.fetch,
+          fetch: fetchFn,
           directory: sessionDirectory,
           throwOnError: true,
         })
@@ -1045,7 +1080,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       if (session) navigate(`/${base64Encode(sessionDirectory)}/session/${session.id}`)
     }
     if (!session) return
-
     const model = {
       modelID: currentModel.id,
       providerID: currentModel.provider.id,
@@ -1503,13 +1537,11 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
             ref={(el) => {
               editorRef = el
               props.ref?.(el)
+              // Setup event listeners immediately when element is created
+              // This ensures they work in Tauri WebView2 where JSX handlers may fail
+              setupEditorListeners(el)
             }}
             contenteditable="true"
-            onInput={handleInput}
-            onPaste={handlePaste}
-            onCompositionStart={() => setComposing(true)}
-            onCompositionEnd={() => setComposing(false)}
-            onKeyDown={handleKeyDown}
             classList={{
               "select-text": true,
               "w-full px-5 py-3 pr-12 text-14-regular text-text-strong focus:outline-none whitespace-pre-wrap": true,

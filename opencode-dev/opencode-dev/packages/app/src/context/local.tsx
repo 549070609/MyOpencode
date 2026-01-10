@@ -1,5 +1,5 @@
 import { createStore, produce, reconcile } from "solid-js/store"
-import { batch, createMemo, onCleanup } from "solid-js"
+import { batch, createEffect, createMemo, onCleanup } from "solid-js"
 import { filter, firstBy, flat, groupBy, mapValues, pipe, uniqueBy, values } from "remeda"
 import type { FileContent, FileNode, Model, Provider, File as FileStatus } from "@opencode-ai/sdk/v2"
 import { createSimpleContext } from "@opencode-ai/ui/context"
@@ -67,8 +67,17 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       const [store, setStore] = createStore<{
         current?: string
       }>({
-        current: list()[0]?.name,
+        current: undefined, // Will be set by effect when agents load
       })
+
+      // Auto-set default agent when agent list becomes available
+      createEffect(() => {
+        const available = list()
+        if (available.length > 0 && !store.current) {
+          setStore("current", available[0].name)
+        }
+      })
+
       return {
         list,
         current() {
@@ -206,7 +215,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
         }
 
-        throw new Error("No default model found")
+        // Return undefined instead of throwing when providers haven't loaded yet
+        return undefined
       })
 
       const current = createMemo(() => {
@@ -264,7 +274,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         set(model: ModelKey | undefined, options?: { recent?: boolean }) {
           batch(() => {
             const currentAgent = agent.current()
-            if (currentAgent) setEphemeral("model", currentAgent.name, model ?? fallbackModel())
+            const modelToSet = model ?? fallbackModel()
+            if (currentAgent && modelToSet) setEphemeral("model", currentAgent.name, modelToSet)
             if (model) updateVisibility(model, "show")
             if (options?.recent && model) {
               const uniq = uniqueBy([model, ...store.recent], (x) => x.providerID + x.modelID)

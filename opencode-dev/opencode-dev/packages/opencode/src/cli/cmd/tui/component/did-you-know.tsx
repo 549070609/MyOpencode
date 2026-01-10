@@ -34,7 +34,7 @@ export function randomizeTip() {
 }
 
 const BOX_WIDTH = 42
-const TITLE = " 🅘 Did you know? "
+const TITLE = " 🅘 你知道吗？ "
 
 export function DidYouKnow() {
   const { theme } = useTheme()
@@ -77,7 +77,7 @@ export function DidYouKnow() {
       <box flexDirection="row" justifyContent="flex-end">
         <text>
           <span style={{ fg: theme.text }}>{keybind.print("tips_toggle")}</span>
-          <span style={{ fg: theme.textMuted }}> hide tips</span>
+          <span style={{ fg: theme.textMuted }}> 隐藏提示</span>
         </text>
       </box>
     </box>

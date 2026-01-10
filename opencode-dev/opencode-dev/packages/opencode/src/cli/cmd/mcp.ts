@@ -28,11 +28,11 @@ function getAuthStatusIcon(status: MCP.AuthStatus): string {
 function getAuthStatusText(status: MCP.AuthStatus): string {
   switch (status) {
     case "authenticated":
-      return "authenticated"
+      return "已认证"
     case "expired":
-      return "expired"
+      return "已过期"
     case "not_authenticated":
-      return "not authenticated"
+      return "未认证"
   }
 }
 
@@ -71,7 +71,7 @@ export const McpListCommand = cmd({
       directory: process.cwd(),
       async fn() {
         UI.empty()
-        prompts.intro("MCP Servers")
+        prompts.intro("MCP 服务器")
 
         const config = await Config.get()
         const mcpServers = config.mcp ?? {}
@@ -82,8 +82,8 @@ export const McpListCommand = cmd({
         )
 
         if (servers.length === 0) {
-          prompts.log.warn("No MCP servers configured")
-          prompts.outro("Add servers with: opencode mcp add")
+          prompts.log.warn("未配置 MCP 服务器")
+          prompts.outro("使用 opencode mcp add 添加服务器")
           return
         }
 
@@ -98,26 +98,26 @@ export const McpListCommand = cmd({
 
           if (!status) {
             statusIcon = "○"
-            statusText = "not initialized"
+            statusText = "未初始化"
           } else if (status.status === "connected") {
             statusIcon = "✓"
-            statusText = "connected"
+            statusText = "已连接"
             if (hasOAuth && hasStoredTokens) {
               hint = " (OAuth)"
             }
           } else if (status.status === "disabled") {
             statusIcon = "○"
-            statusText = "disabled"
+            statusText = "已禁用"
           } else if (status.status === "needs_auth") {
             statusIcon = "⚠"
-            statusText = "needs authentication"
+            statusText = "需要认证"
           } else if (status.status === "needs_client_registration") {
             statusIcon = "✗"
-            statusText = "needs client registration"
+            statusText = "需要客户端注册"
             hint = "\n    " + status.error
           } else {
             statusIcon = "✗"
-            statusText = "failed"
+            statusText = "失败"
             hint = "\n    " + status.error
           }
 
@@ -127,7 +127,7 @@ export const McpListCommand = cmd({
           )
         }
 
-        prompts.outro(`${servers.length} server(s)`)
+        prompts.outro(`${servers.length} 个服务器`)
       },
     })
   },
@@ -148,7 +148,7 @@ export const McpAuthCommand = cmd({
       directory: process.cwd(),
       async fn() {
         UI.empty()
-        prompts.intro("MCP OAuth Authentication")
+        prompts.intro("MCP OAuth 认证")
 
         const config = await Config.get()
         const mcpServers = config.mcp ?? {}
@@ -159,8 +159,8 @@ export const McpAuthCommand = cmd({
         )
 
         if (oauthServers.length === 0) {
-          prompts.log.warn("No OAuth-capable MCP servers configured")
-          prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in opencode.json:")
+          prompts.log.warn("未配置支持 OAuth 的 MCP 服务器")
+          prompts.log.info("远程 MCP 服务器默认支持 OAuth。在 opencode.json 中添加远程服务器:")
           prompts.log.info(`
   "mcp": {
     "my-server": {
@@ -168,7 +168,7 @@ export const McpAuthCommand = cmd({
       "url": "https://example.com/mcp"
     }
   }`)
-          prompts.outro("Done")
+          prompts.outro("完成")
           return
         }
 
@@ -190,7 +190,7 @@ export const McpAuthCommand = cmd({
           )
 
           const selected = await prompts.select({
-            message: "Select MCP server to authenticate",
+            message: "选择要认证的 MCP 服务器",
             options,
           })
           if (prompts.isCancel(selected)) throw new UI.CancelledError()
@@ -199,14 +199,14 @@ export const McpAuthCommand = cmd({
 
         const serverConfig = mcpServers[serverName]
         if (!serverConfig) {
-          prompts.log.error(`MCP server not found: ${serverName}`)
-          prompts.outro("Done")
+          prompts.log.error(`未找到 MCP 服务器: ${serverName}`)
+          prompts.outro("完成")
           return
         }
 
         if (!isMcpRemote(serverConfig) || serverConfig.oauth === false) {
-          prompts.log.error(`MCP server ${serverName} is not an OAuth-capable remote server`)
-          prompts.outro("Done")
+          prompts.log.error(`MCP 服务器 ${serverName} 不是支持 OAuth 的远程服务器`)
+          prompts.outro("完成")
           return
         }
 
@@ -214,28 +214,28 @@ export const McpAuthCommand = cmd({
         const authStatus = await MCP.getAuthStatus(serverName)
         if (authStatus === "authenticated") {
           const confirm = await prompts.confirm({
-            message: `${serverName} already has valid credentials. Re-authenticate?`,
+            message: `${serverName} 已有有效凭据。重新认证？`,
           })
           if (prompts.isCancel(confirm) || !confirm) {
-            prompts.outro("Cancelled")
+            prompts.outro("已取消")
             return
           }
         } else if (authStatus === "expired") {
-          prompts.log.warn(`${serverName} has expired credentials. Re-authenticating...`)
+          prompts.log.warn(`${serverName} 凭据已过期。正在重新认证...`)
         }
 
         const spinner = prompts.spinner()
-        spinner.start("Starting OAuth flow...")
+        spinner.start("启动 OAuth 流程...")
 
         try {
           const status = await MCP.authenticate(serverName)
 
           if (status.status === "connected") {
-            spinner.stop("Authentication successful!")
+            spinner.stop("认证成功！")
           } else if (status.status === "needs_client_registration") {
-            spinner.stop("Authentication failed", 1)
+            spinner.stop("认证失败", 1)
             prompts.log.error(status.error)
-            prompts.log.info("Add clientId to your MCP server config:")
+            prompts.log.info("在 MCP 服务器配置中添加 clientId:")
             prompts.log.info(`
   "mcp": {
     "${serverName}": {
@@ -248,17 +248,17 @@ export const McpAuthCommand = cmd({
     }
   }`)
           } else if (status.status === "failed") {
-            spinner.stop("Authentication failed", 1)
+            spinner.stop("认证失败", 1)
             prompts.log.error(status.error)
           } else {
-            spinner.stop("Unexpected status: " + status.status, 1)
+            spinner.stop("意外状态: " + status.status, 1)
           }
         } catch (error) {
-          spinner.stop("Authentication failed", 1)
+          spinner.stop("认证失败", 1)
           prompts.log.error(error instanceof Error ? error.message : String(error))
         }
 
-        prompts.outro("Done")
+        prompts.outro("完成")
       },
     })
   },
@@ -273,7 +273,7 @@ export const McpAuthListCommand = cmd({
       directory: process.cwd(),
       async fn() {
         UI.empty()
-        prompts.intro("MCP OAuth Status")
+        prompts.intro("MCP OAuth 状态")
 
         const config = await Config.get()
         const mcpServers = config.mcp ?? {}
@@ -284,8 +284,8 @@ export const McpAuthListCommand = cmd({
         )
 
         if (oauthServers.length === 0) {
-          prompts.log.warn("No OAuth-capable MCP servers configured")
-          prompts.outro("Done")
+          prompts.log.warn("未配置支持 OAuth 的 MCP 服务器")
+          prompts.outro("完成")
           return
         }
 
@@ -298,7 +298,7 @@ export const McpAuthListCommand = cmd({
           prompts.log.info(`${icon} ${name} ${UI.Style.TEXT_DIM}${statusText}\n    ${UI.Style.TEXT_DIM}${url}`)
         }
 
-        prompts.outro(`${oauthServers.length} OAuth-capable server(s)`)
+        prompts.outro(`${oauthServers.length} 个支持 OAuth 的服务器`)
       },
     })
   },
@@ -317,30 +317,30 @@ export const McpLogoutCommand = cmd({
       directory: process.cwd(),
       async fn() {
         UI.empty()
-        prompts.intro("MCP OAuth Logout")
+        prompts.intro("MCP OAuth 登出")
 
         const authPath = path.join(Global.Path.data, "mcp-auth.json")
         const credentials = await McpAuth.all()
         const serverNames = Object.keys(credentials)
 
         if (serverNames.length === 0) {
-          prompts.log.warn("No MCP OAuth credentials stored")
-          prompts.outro("Done")
+          prompts.log.warn("未存储 MCP OAuth 凭据")
+          prompts.outro("完成")
           return
         }
 
         let serverName = args.name
         if (!serverName) {
           const selected = await prompts.select({
-            message: "Select MCP server to logout",
+            message: "选择要登出的 MCP 服务器",
             options: serverNames.map((name) => {
               const entry = credentials[name]
               const hasTokens = !!entry.tokens
               const hasClient = !!entry.clientInfo
               let hint = ""
-              if (hasTokens && hasClient) hint = "tokens + client"
-              else if (hasTokens) hint = "tokens"
-              else if (hasClient) hint = "client registration"
+              if (hasTokens && hasClient) hint = "令牌 + 客户端"
+              else if (hasTokens) hint = "令牌"
+              else if (hasClient) hint = "客户端注册"
               return {
                 label: name,
                 value: name,
@@ -353,14 +353,14 @@ export const McpLogoutCommand = cmd({
         }
 
         if (!credentials[serverName]) {
-          prompts.log.error(`No credentials found for: ${serverName}`)
-          prompts.outro("Done")
+          prompts.log.error(`未找到凭据: ${serverName}`)
+          prompts.outro("完成")
           return
         }
 
         await MCP.removeAuth(serverName)
-        prompts.log.success(`Removed OAuth credentials for ${serverName}`)
-        prompts.outro("Done")
+        prompts.log.success(`已删除 ${serverName} 的 OAuth 凭据`)
+        prompts.outro("完成")
       },
     })
   },
@@ -371,26 +371,26 @@ export const McpAddCommand = cmd({
   describe: "add an MCP server",
   async handler() {
     UI.empty()
-    prompts.intro("Add MCP server")
+    prompts.intro("添加 MCP 服务器")
 
     const name = await prompts.text({
-      message: "Enter MCP server name",
-      validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+      message: "输入 MCP 服务器名称",
+      validate: (x) => (x && x.length > 0 ? undefined : "必填"),
     })
     if (prompts.isCancel(name)) throw new UI.CancelledError()
 
     const type = await prompts.select({
-      message: "Select MCP server type",
+      message: "选择 MCP 服务器类型",
       options: [
         {
-          label: "Local",
+          label: "本地",
           value: "local",
-          hint: "Run a local command",
+          hint: "运行本地命令",
         },
         {
-          label: "Remote",
+          label: "远程",
           value: "remote",
-          hint: "Connect to a remote URL",
+          hint: "连接到远程 URL",
         },
       ],
     })
@@ -398,52 +398,52 @@ export const McpAddCommand = cmd({
 
     if (type === "local") {
       const command = await prompts.text({
-        message: "Enter command to run",
-        placeholder: "e.g., opencode x @modelcontextprotocol/server-filesystem",
-        validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+        message: "输入要运行的命令",
+        placeholder: "例如: opencode x @modelcontextprotocol/server-filesystem",
+        validate: (x) => (x && x.length > 0 ? undefined : "必填"),
       })
       if (prompts.isCancel(command)) throw new UI.CancelledError()
 
-      prompts.log.info(`Local MCP server "${name}" configured with command: ${command}`)
-      prompts.outro("MCP server added successfully")
+      prompts.log.info(`本地 MCP 服务器 "${name}" 已配置命令: ${command}`)
+      prompts.outro("MCP 服务器添加成功")
       return
     }
 
     if (type === "remote") {
       const url = await prompts.text({
-        message: "Enter MCP server URL",
-        placeholder: "e.g., https://example.com/mcp",
+        message: "输入 MCP 服务器 URL",
+        placeholder: "例如: https://example.com/mcp",
         validate: (x) => {
-          if (!x) return "Required"
-          if (x.length === 0) return "Required"
+          if (!x) return "必填"
+          if (x.length === 0) return "必填"
           const isValid = URL.canParse(x)
-          return isValid ? undefined : "Invalid URL"
+          return isValid ? undefined : "无效的 URL"
         },
       })
       if (prompts.isCancel(url)) throw new UI.CancelledError()
 
       const useOAuth = await prompts.confirm({
-        message: "Does this server require OAuth authentication?",
+        message: "此服务器是否需要 OAuth 认证？",
         initialValue: false,
       })
       if (prompts.isCancel(useOAuth)) throw new UI.CancelledError()
 
       if (useOAuth) {
         const hasClientId = await prompts.confirm({
-          message: "Do you have a pre-registered client ID?",
+          message: "您是否有预注册的客户端 ID？",
           initialValue: false,
         })
         if (prompts.isCancel(hasClientId)) throw new UI.CancelledError()
 
         if (hasClientId) {
           const clientId = await prompts.text({
-            message: "Enter client ID",
-            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+            message: "输入客户端 ID",
+            validate: (x) => (x && x.length > 0 ? undefined : "必填"),
           })
           if (prompts.isCancel(clientId)) throw new UI.CancelledError()
 
           const hasSecret = await prompts.confirm({
-            message: "Do you have a client secret?",
+            message: "您是否有客户端密钥？",
             initialValue: false,
           })
           if (prompts.isCancel(hasSecret)) throw new UI.CancelledError()
@@ -451,14 +451,14 @@ export const McpAddCommand = cmd({
           let clientSecret: string | undefined
           if (hasSecret) {
             const secret = await prompts.password({
-              message: "Enter client secret",
+              message: "输入客户端密钥",
             })
             if (prompts.isCancel(secret)) throw new UI.CancelledError()
             clientSecret = secret
           }
 
-          prompts.log.info(`Remote MCP server "${name}" configured with OAuth (client ID: ${clientId})`)
-          prompts.log.info("Add this to your opencode.json:")
+          prompts.log.info(`远程 MCP 服务器 "${name}" 已配置 OAuth (客户端 ID: ${clientId})`)
+          prompts.log.info("将此添加到您的 opencode.json:")
           prompts.log.info(`
   "mcp": {
     "${name}": {
@@ -470,8 +470,8 @@ export const McpAddCommand = cmd({
     }
   }`)
         } else {
-          prompts.log.info(`Remote MCP server "${name}" configured with OAuth (dynamic registration)`)
-          prompts.log.info("Add this to your opencode.json:")
+          prompts.log.info(`远程 MCP 服务器 "${name}" 已配置 OAuth (动态注册)`)
+          prompts.log.info("将此添加到您的 opencode.json:")
           prompts.log.info(`
   "mcp": {
     "${name}": {
@@ -488,11 +488,11 @@ export const McpAddCommand = cmd({
         })
         const transport = new StreamableHTTPClientTransport(new URL(url))
         await client.connect(transport)
-        prompts.log.info(`Remote MCP server "${name}" configured with URL: ${url}`)
+        prompts.log.info(`远程 MCP 服务器 "${name}" 已配置 URL: ${url}`)
       }
     }
 
-    prompts.outro("MCP server added successfully")
+    prompts.outro("MCP 服务器添加成功")
   },
 })
 
@@ -510,7 +510,7 @@ export const McpDebugCommand = cmd({
       directory: process.cwd(),
       async fn() {
         UI.empty()
-        prompts.intro("MCP OAuth Debug")
+        prompts.intro("MCP OAuth 调试")
 
         const config = await Config.get()
         const mcpServers = config.mcp ?? {}
@@ -518,29 +518,29 @@ export const McpDebugCommand = cmd({
 
         const serverConfig = mcpServers[serverName]
         if (!serverConfig) {
-          prompts.log.error(`MCP server not found: ${serverName}`)
-          prompts.outro("Done")
+          prompts.log.error(`未找到 MCP 服务器: ${serverName}`)
+          prompts.outro("完成")
           return
         }
 
         if (!isMcpRemote(serverConfig)) {
-          prompts.log.error(`MCP server ${serverName} is not a remote server`)
-          prompts.outro("Done")
+          prompts.log.error(`MCP 服务器 ${serverName} 不是远程服务器`)
+          prompts.outro("完成")
           return
         }
 
         if (serverConfig.oauth === false) {
-          prompts.log.warn(`MCP server ${serverName} has OAuth explicitly disabled`)
-          prompts.outro("Done")
+          prompts.log.warn(`MCP 服务器 ${serverName} 已显式禁用 OAuth`)
+          prompts.outro("完成")
           return
         }
 
-        prompts.log.info(`Server: ${serverName}`)
+        prompts.log.info(`服务器: ${serverName}`)
         prompts.log.info(`URL: ${serverConfig.url}`)
 
         // Check stored auth status
         const authStatus = await MCP.getAuthStatus(serverName)
-        prompts.log.info(`Auth status: ${getAuthStatusIcon(authStatus)} ${getAuthStatusText(authStatus)}`)
+        prompts.log.info(`认证状态: ${getAuthStatusIcon(authStatus)} ${getAuthStatusText(authStatus)}`)
 
         const entry = await McpAuth.get(serverName)
         if (entry?.tokens) {
@@ -563,7 +563,7 @@ export const McpDebugCommand = cmd({
         }
 
         const spinner = prompts.spinner()
-        spinner.start("Testing connection...")
+        spinner.start("测试连接...")
 
         // Test basic HTTP connectivity first
         try {
@@ -585,7 +585,7 @@ export const McpDebugCommand = cmd({
             }),
           })
 
-          spinner.stop(`HTTP response: ${response.status} ${response.statusText}`)
+          spinner.stop(`HTTP 响应: ${response.status} ${response.statusText}`)
 
           // Check for WWW-Authenticate header
           const wwwAuth = response.headers.get("www-authenticate")
@@ -594,7 +594,7 @@ export const McpDebugCommand = cmd({
           }
 
           if (response.status === 401) {
-            prompts.log.warn("Server returned 401 Unauthorized")
+            prompts.log.warn("服务器返回 401 未授权")
 
             // Try to discover OAuth metadata
             const oauthConfig = typeof serverConfig.oauth === "object" ? serverConfig.oauth : undefined
@@ -611,7 +611,7 @@ export const McpDebugCommand = cmd({
               },
             )
 
-            prompts.log.info("Testing OAuth flow (without completing authorization)...")
+            prompts.log.info("测试 OAuth 流程 (不完成授权)...")
 
             // Try creating transport with auth provider to trigger discovery
             const transport = new StreamableHTTPClientTransport(new URL(serverConfig.url), {
@@ -624,47 +624,47 @@ export const McpDebugCommand = cmd({
                 version: Installation.VERSION,
               })
               await client.connect(transport)
-              prompts.log.success("Connection successful (already authenticated)")
+              prompts.log.success("连接成功 (已认证)")
               await client.close()
             } catch (error) {
               if (error instanceof UnauthorizedError) {
-                prompts.log.info(`OAuth flow triggered: ${error.message}`)
+                prompts.log.info(`OAuth 流程已触发: ${error.message}`)
 
                 // Check if dynamic registration would be attempted
                 const clientInfo = await authProvider.clientInformation()
                 if (clientInfo) {
-                  prompts.log.info(`Client ID available: ${clientInfo.client_id}`)
+                  prompts.log.info(`客户端 ID 可用: ${clientInfo.client_id}`)
                 } else {
-                  prompts.log.info("No client ID - dynamic registration will be attempted")
+                  prompts.log.info("无客户端 ID - 将尝试动态注册")
                 }
               } else {
-                prompts.log.error(`Connection error: ${error instanceof Error ? error.message : String(error)}`)
+                prompts.log.error(`连接错误: ${error instanceof Error ? error.message : String(error)}`)
               }
             }
           } else if (response.status >= 200 && response.status < 300) {
-            prompts.log.success("Server responded successfully (no auth required or already authenticated)")
+            prompts.log.success("服务器响应成功 (无需认证或已认证)")
             const body = await response.text()
             try {
               const json = JSON.parse(body)
               if (json.result?.serverInfo) {
-                prompts.log.info(`Server info: ${JSON.stringify(json.result.serverInfo)}`)
+                prompts.log.info(`服务器信息: ${JSON.stringify(json.result.serverInfo)}`)
               }
             } catch {
               // Not JSON, ignore
             }
           } else {
-            prompts.log.warn(`Unexpected status: ${response.status}`)
+            prompts.log.warn(`意外状态: ${response.status}`)
             const body = await response.text().catch(() => "")
             if (body) {
-              prompts.log.info(`Response body: ${body.substring(0, 500)}`)
+              prompts.log.info(`响应体: ${body.substring(0, 500)}`)
             }
           }
         } catch (error) {
-          spinner.stop("Connection failed", 1)
-          prompts.log.error(`Error: ${error instanceof Error ? error.message : String(error)}`)
+          spinner.stop("连接失败", 1)
+          prompts.log.error(`错误: ${error instanceof Error ? error.message : String(error)}`)
         }
 
-        prompts.outro("Debug complete")
+        prompts.outro("调试完成")
       },
     })
   },

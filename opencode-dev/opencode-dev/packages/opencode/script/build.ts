@@ -123,7 +123,12 @@ for (const item of targets) {
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
-  const parserWorker = fs.realpathSync(path.resolve(dir, "./node_modules/@opentui/core/parser.worker.js"))
+  // Try local node_modules first, then fall back to root node_modules (monorepo structure)
+  const localParserWorkerPath = path.resolve(dir, "./node_modules/@opentui/core/parser.worker.js")
+  const rootParserWorkerPath = path.resolve(dir, "../../node_modules/@opentui/core/parser.worker.js")
+  const parserWorker = fs.existsSync(localParserWorkerPath)
+    ? fs.realpathSync(localParserWorkerPath)
+    : fs.realpathSync(rootParserWorkerPath)
   const workerPath = "./src/cli/cmd/tui/worker.ts"
 
   // Use platform-specific bunfs root path based on target OS

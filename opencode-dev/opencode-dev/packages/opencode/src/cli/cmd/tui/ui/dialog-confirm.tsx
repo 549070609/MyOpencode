@@ -43,20 +43,20 @@ export function DialogConfirm(props: DialogConfirmProps) {
         <text fg={theme.textMuted}>{props.message}</text>
       </box>
       <box flexDirection="row" justifyContent="flex-end" paddingBottom={1}>
-        <For each={["cancel", "confirm"]}>
-          {(key) => (
+        <For each={[{ key: "cancel", label: "取消" }, { key: "confirm", label: "确认" }] as const}>
+          {(item) => (
             <box
               paddingLeft={1}
               paddingRight={1}
-              backgroundColor={key === store.active ? theme.primary : undefined}
+              backgroundColor={item.key === store.active ? theme.primary : undefined}
               onMouseUp={(evt) => {
-                if (key === "confirm") props.onConfirm?.()
-                if (key === "cancel") props.onCancel?.()
+                if (item.key === "confirm") props.onConfirm?.()
+                if (item.key === "cancel") props.onCancel?.()
                 dialog.clear()
               }}
             >
-              <text fg={key === store.active ? theme.selectedListItemText : theme.textMuted}>
-                {Locale.titlecase(key)}
+              <text fg={item.key === store.active ? theme.selectedListItemText : theme.textMuted}>
+                {item.label}
               </text>
             </box>
           )}

@@ -604,6 +604,7 @@ export namespace Config {
       model_cycle_favorite: z.string().optional().default("none").describe("Next favorite model"),
       model_cycle_favorite_reverse: z.string().optional().default("none").describe("Previous favorite model"),
       command_list: z.string().optional().default("ctrl+p").describe("List available commands"),
+      provider_settings: z.string().optional().default("<leader>p").describe("Open provider settings"),
       agent_list: z.string().optional().default("<leader>a").describe("List agents"),
       agent_cycle: z.string().optional().default("tab").describe("Next agent"),
       agent_cycle_reverse: z.string().optional().default("shift+tab").describe("Previous agent"),
@@ -697,6 +698,7 @@ export namespace Config {
       terminal_suspend: z.string().optional().default("ctrl+z").describe("Suspend terminal"),
       terminal_title_toggle: z.string().optional().default("none").describe("Toggle terminal title"),
       tips_toggle: z.string().optional().default("<leader>h").describe("Toggle tips on home screen"),
+      provider_settings: z.string().optional().default("<leader>p").describe("Open provider settings"),
     })
     .strict()
     .meta({

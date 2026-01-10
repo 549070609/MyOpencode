@@ -23,45 +23,45 @@ export const UpgradeCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Upgrade")
+    prompts.intro("升级")
     const detectedMethod = await Installation.method()
     const method = (args.method as Installation.Method) ?? detectedMethod
     if (method === "unknown") {
-      prompts.log.error(`opencode is installed to ${process.execPath} and may be managed by a package manager`)
+      prompts.log.error(`opencode 安装在 ${process.execPath}，可能由包管理器管理`)
       const install = await prompts.select({
-        message: "Install anyways?",
+        message: "仍然安装？",
         options: [
-          { label: "Yes", value: true },
-          { label: "No", value: false },
+          { label: "是", value: true },
+          { label: "否", value: false },
         ],
         initialValue: false,
       })
       if (!install) {
-        prompts.outro("Done")
+        prompts.outro("完成")
         return
       }
     }
-    prompts.log.info("Using method: " + method)
+    prompts.log.info("使用方式: " + method)
     const target = args.target ? args.target.replace(/^v/, "") : await Installation.latest()
 
     if (Installation.VERSION === target) {
-      prompts.log.warn(`opencode upgrade skipped: ${target} is already installed`)
-      prompts.outro("Done")
+      prompts.log.warn(`跳过升级: ${target} 已安装`)
+      prompts.outro("完成")
       return
     }
 
-    prompts.log.info(`From ${Installation.VERSION} → ${target}`)
+    prompts.log.info(`从 ${Installation.VERSION} → ${target}`)
     const spinner = prompts.spinner()
-    spinner.start("Upgrading...")
+    spinner.start("升级中...")
     const err = await Installation.upgrade(method, target).catch((err) => err)
     if (err) {
-      spinner.stop("Upgrade failed", 1)
+      spinner.stop("升级失败", 1)
       if (err instanceof Installation.UpgradeFailedError) prompts.log.error(err.data.stderr)
       else if (err instanceof Error) prompts.log.error(err.message)
-      prompts.outro("Done")
+      prompts.outro("完成")
       return
     }
-    spinner.stop("Upgrade complete")
-    prompts.outro("Done")
+    spinner.stop("升级完成")
+    prompts.outro("完成")
   },
 }

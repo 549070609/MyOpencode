@@ -43,6 +43,26 @@
         }
       })()
     </script>
+    <script id="oc-debug-preload">
+      // Debug: Log __OPENCODE__ state at startup
+      console.log("[HTML Preload] window.__OPENCODE__:", window.__OPENCODE__);
+      console.log("[HTML Preload] location.origin:", window.location.origin);
+      // Poll for __OPENCODE__ to detect when it's set
+      if (!window.__OPENCODE__) {
+        console.log("[HTML Preload] __OPENCODE__ not set yet, will poll...");
+        var pollCount = 0;
+        var pollInterval = setInterval(function() {
+          pollCount++;
+          if (window.__OPENCODE__) {
+            console.log("[HTML Preload] __OPENCODE__ set after " + pollCount + " polls:", window.__OPENCODE__);
+            clearInterval(pollInterval);
+          } else if (pollCount > 100) {
+            console.warn("[HTML Preload] __OPENCODE__ still not set after 100 polls!");
+            clearInterval(pollInterval);
+          }
+        }, 50);
+      }
+    </script>
   </head>
   <body class="antialiased overscroll-none text-12-regular overflow-hidden">
     <noscript>You need to enable JavaScript to run this app.</noscript>

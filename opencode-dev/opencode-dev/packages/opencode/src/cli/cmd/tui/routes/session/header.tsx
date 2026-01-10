@@ -79,16 +79,16 @@ export function Header() {
           <Match when={session()?.parentID}>
             <box flexDirection="row" gap={2}>
               <text fg={theme.text}>
-                <b>Subagent session</b>
+                <b>子代理会话</b>
               </text>
               <text fg={theme.text}>
-                Parent <span style={{ fg: theme.textMuted }}>{keybind.print("session_parent")}</span>
+                父级 <span style={{ fg: theme.textMuted }}>{keybind.print("session_parent")}</span>
               </text>
               <text fg={theme.text}>
-                Prev <span style={{ fg: theme.textMuted }}>{keybind.print("session_child_cycle_reverse")}</span>
+                上一个 <span style={{ fg: theme.textMuted }}>{keybind.print("session_child_cycle_reverse")}</span>
               </text>
               <text fg={theme.text}>
-                Next <span style={{ fg: theme.textMuted }}>{keybind.print("session_child_cycle")}</span>
+                下一个 <span style={{ fg: theme.textMuted }}>{keybind.print("session_child_cycle")}</span>
               </text>
               <box flexGrow={1} flexShrink={1} />
               <ContextInfo context={context} cost={cost} />
@@ -110,7 +110,7 @@ export function Header() {
                     </Match>
                     <Match when={true}>
                       <text fg={theme.text} wrapMode="word">
-                        /share <span style={{ fg: theme.textMuted }}>copy link</span>
+                        /share <span style={{ fg: theme.textMuted }}>复制链接</span>
                       </text>
                     </Match>
                   </Switch>

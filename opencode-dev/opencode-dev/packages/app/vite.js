@@ -18,6 +18,11 @@ export default [
         worker: {
           format: "es",
         },
+        build: {
+          // Don't inline fonts as base64 - emit them as separate files
+          assetsInlineLimit: 0,
+        },
+        assetsInclude: ["**/*.woff2", "**/*.woff"],
       }
     },
   },

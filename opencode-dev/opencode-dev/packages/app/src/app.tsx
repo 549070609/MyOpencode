@@ -24,7 +24,6 @@ import { Logo } from "@opencode-ai/ui/logo"
 import Layout from "@/pages/layout"
 import DirectoryLayout from "@/pages/directory-layout"
 import { ErrorPage } from "./pages/error"
-import { iife } from "@opencode-ai/util/iife"
 import { Suspense } from "solid-js"
 
 const Home = lazy(() => import("@/pages/home"))
@@ -37,17 +36,76 @@ declare global {
   }
 }
 
-const defaultServerUrl = iife(() => {
+// Calculate default server URL - this is called lazily to handle async initialization
+function getDefaultServerUrl(): string {
+  console.log("[App] Calculating defaultServerUrl...")
+  console.log("[App] window.__OPENCODE__:", window.__OPENCODE__)
+  console.log("[App] location.hostname:", location.hostname)
+  console.log("[App] location.origin:", window.location.origin)
+
   const param = new URLSearchParams(document.location.search).get("url")
-  if (param) return param
+  if (param) {
+    console.log("[App] Using URL param:", param)
+    return param
+  }
 
-  if (location.hostname.includes("opencode.ai")) return "http://localhost:4096"
-  if (window.__OPENCODE__) return `http://127.0.0.1:${window.__OPENCODE__.port}`
-  if (import.meta.env.DEV)
-    return `http://${import.meta.env.VITE_OPENCODE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_OPENCODE_SERVER_PORT ?? "4096"}`
+  if (location.hostname.includes("opencode.ai")) {
+    console.log("[App] Using opencode.ai default: http://localhost:4096")
+    return "http://localhost:4096"
+  }
 
-  return window.location.origin
-})
+  // Check for Tauri environment with port
+  if (window.__OPENCODE__?.port) {
+    const url = `http://127.0.0.1:${window.__OPENCODE__.port}`
+    console.log("[App] Using __OPENCODE__.port:", url)
+    return url
+  }
+
+  // Check if we're in a Tauri-like environment (not web)
+  const isTauriEnv = window.location.origin.startsWith("tauri://") ||
+                     window.location.origin.startsWith("https://tauri.localhost") ||
+                     window.location.protocol === "tauri:"
+
+  if (isTauriEnv) {
+    // In Tauri but no port set yet - this shouldn't happen normally
+    // Log a warning and use a placeholder that will trigger health check failure
+    console.warn("[App] Tauri environment detected but no port set! window.__OPENCODE__:", window.__OPENCODE__)
+    // Return empty to force waiting
+    return ""
+  }
+
+  if (import.meta.env.DEV) {
+    const url = `http://${import.meta.env.VITE_OPENCODE_SERVER_HOST ?? "localhost"}:${import.meta.env.VITE_OPENCODE_SERVER_PORT ?? "4096"}`
+    console.log("[App] Using DEV env:", url)
+    return url
+  }
+
+  // Fallback: try to use origin for web mode
+  const origin = window.location.origin
+  if (origin && origin !== "null") {
+    console.log("[App] Using location.origin:", origin)
+    return origin
+  }
+
+  // Final fallback
+  console.log("[App] Using fallback: http://127.0.0.1:4096")
+  return "http://127.0.0.1:4096"
+}
+
+// Dynamic getter that re-checks __OPENCODE__ each time
+function getOrComputeDefaultServerUrl(): string {
+  // Always try to get the port from __OPENCODE__ first (it might be set later)
+  if (window.__OPENCODE__?.port) {
+    const url = `http://127.0.0.1:${window.__OPENCODE__.port}`
+    console.log("[App] getOrComputeDefaultServerUrl using __OPENCODE__.port:", url)
+    return url
+  }
+
+  // Fall back to computed URL
+  const url = getDefaultServerUrl()
+  console.log("[App] getOrComputeDefaultServerUrl computed:", url)
+  return url
+}
 
 export function AppBaseProviders(props: ParentProps) {
   return (
@@ -70,16 +128,37 @@ export function AppBaseProviders(props: ParentProps) {
 
 function ServerKey(props: ParentProps) {
   const server = useServer()
+
+  // Log state changes for debugging
+  console.log("[ServerKey] Rendering - url:", server.url, "ready:", server.ready(), "healthy:", server.healthy())
+
   return (
-    <Show when={server.url} keyed>
+    <Show
+      when={server.url}
+      keyed
+      fallback={
+        <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base text-text-weak">
+          <div class="text-16-medium mb-4">Waiting for server URL...</div>
+          <div class="text-12-regular opacity-60 space-y-1">
+            <div>URL: {server.url || "none"}</div>
+            <div>Ready: {String(server.ready())}</div>
+            <div>Check console for details</div>
+          </div>
+        </div>
+      }
+    >
       {props.children}
     </Show>
   )
 }
 
 export function AppInterface() {
+  // Compute URL lazily when component renders (after initialization_script runs)
+  const serverUrl = getOrComputeDefaultServerUrl()
+  console.log("[AppInterface] Rendering with serverUrl:", serverUrl)
+
   return (
-    <ServerProvider defaultUrl={defaultServerUrl}>
+    <ServerProvider defaultUrl={serverUrl}>
       <ServerKey>
         <GlobalSDKProvider>
           <GlobalSyncProvider>

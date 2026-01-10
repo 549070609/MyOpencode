@@ -67,7 +67,7 @@ const AgentCreateCommand = cmd({
 
         if (!isFullyNonInteractive) {
           UI.empty()
-          prompts.intro("Create agent")
+          prompts.intro("创建 Agent")
         }
 
         const project = Instance.project
@@ -80,15 +80,15 @@ const AgentCreateCommand = cmd({
           let scope: "global" | "project" = "global"
           if (project.vcs === "git") {
             const scopeResult = await prompts.select({
-              message: "Location",
+              message: "位置",
               options: [
                 {
-                  label: "Current project",
+                  label: "当前项目",
                   value: "project" as const,
                   hint: Instance.worktree,
                 },
                 {
-                  label: "Global",
+                  label: "全局",
                   value: "global" as const,
                   hint: Global.Path.config,
                 },
@@ -109,9 +109,9 @@ const AgentCreateCommand = cmd({
           description = cliDescription
         } else {
           const query = await prompts.text({
-            message: "Description",
-            placeholder: "What should this agent do?",
-            validate: (x) => (x && x.length > 0 ? undefined : "Required"),
+            message: "描述",
+            placeholder: "这个 Agent 应该做什么？",
+            validate: (x) => (x && x.length > 0 ? undefined : "必填"),
           })
           if (prompts.isCancel(query)) throw new UI.CancelledError()
           description = query
@@ -119,14 +119,14 @@ const AgentCreateCommand = cmd({
 
         // Generate agent
         const spinner = prompts.spinner()
-        spinner.start("Generating agent configuration...")
+        spinner.start("生成 Agent 配置...")
         const model = args.model ? Provider.parseModel(args.model) : undefined
         const generated = await Agent.generate({ description, model }).catch((error) => {
-          spinner.stop(`LLM failed to generate agent: ${error.message}`, 1)
+          spinner.stop(`LLM 生成 Agent 失败: ${error.message}`, 1)
           if (isFullyNonInteractive) process.exit(1)
           throw new UI.CancelledError()
         })
-        spinner.stop(`Agent ${generated.identifier} generated`)
+        spinner.stop(`Agent ${generated.identifier} 已生成`)
 
         // Select tools
         let selectedTools: string[]
@@ -134,7 +134,7 @@ const AgentCreateCommand = cmd({
           selectedTools = cliTools ? cliTools.split(",").map((t) => t.trim()) : AVAILABLE_TOOLS
         } else {
           const result = await prompts.multiselect({
-            message: "Select tools to enable",
+            message: "选择要启用的工具",
             options: AVAILABLE_TOOLS.map((tool) => ({
               label: tool,
               value: tool,
@@ -151,22 +151,22 @@ const AgentCreateCommand = cmd({
           mode = cliMode
         } else {
           const modeResult = await prompts.select({
-            message: "Agent mode",
+            message: "Agent 模式",
             options: [
               {
-                label: "All",
+                label: "全部",
                 value: "all" as const,
-                hint: "Can function in both primary and subagent roles",
+                hint: "可作为主 Agent 和子 Agent 使用",
               },
               {
-                label: "Primary",
+                label: "主 Agent",
                 value: "primary" as const,
-                hint: "Acts as a primary/main agent",
+                hint: "作为主/顶层 Agent",
               },
               {
-                label: "Subagent",
+                label: "子 Agent",
                 value: "subagent" as const,
-                hint: "Can be used as a subagent by other agents",
+                hint: "可被其他 Agent 作为子 Agent 调用",
               },
             ],
             initialValue: "all" as const,
@@ -208,7 +208,7 @@ const AgentCreateCommand = cmd({
             console.error(`Error: Agent file already exists: ${filePath}`)
             process.exit(1)
           }
-          prompts.log.error(`Agent file already exists: ${filePath}`)
+          prompts.log.error(`Agent 文件已存在: ${filePath}`)
           throw new UI.CancelledError()
         }
 
@@ -217,8 +217,8 @@ const AgentCreateCommand = cmd({
         if (isFullyNonInteractive) {
           console.log(filePath)
         } else {
-          prompts.log.success(`Agent created: ${filePath}`)
-          prompts.outro("Done")
+          prompts.log.success(`Agent 已创建: ${filePath}`)
+          prompts.outro("完成")
         }
       },
     })

@@ -10,9 +10,12 @@ export const { use: useSDK, provider: SDKProvider } = createSimpleContext({
   init: (props: { directory: string }) => {
     const platform = usePlatform()
     const globalSDK = useGlobalSDK()
+    // For localhost requests, use native fetch as tauriFetch has issues with localhost
+    const isLocalhost = globalSDK.url?.includes("127.0.0.1") || globalSDK.url?.includes("localhost")
+    const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
     const sdk = createOpencodeClient({
       baseUrl: globalSDK.url,
-      fetch: platform.fetch,
+      fetch: fetchFn,
       directory: props.directory,
       throwOnError: true,
     })

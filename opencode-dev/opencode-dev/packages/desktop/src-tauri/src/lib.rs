@@ -89,17 +89,38 @@ async fn ensure_server_started(state: State<'_, ServerState>) -> Result<(), Stri
 }
 
 fn get_sidecar_port() -> u32 {
-    option_env!("OPENCODE_PORT")
+    // First check if port is explicitly set via environment variable
+    if let Some(port) = option_env!("OPENCODE_PORT")
         .map(|s| s.to_string())
         .or_else(|| std::env::var("OPENCODE_PORT").ok())
         .and_then(|port_str| port_str.parse().ok())
-        .unwrap_or_else(|| {
-            TcpListener::bind("127.0.0.1:0")
-                .expect("Failed to bind to find free port")
-                .local_addr()
-                .expect("Failed to get local address")
-                .port()
-        }) as u32
+    {
+        return port;
+    }
+
+    // Find an available port by binding to port 0
+    // We keep trying until we find a port that's not in use
+    for _ in 0..10 {
+        if let Ok(listener) = TcpListener::bind("127.0.0.1:0") {
+            if let Ok(addr) = listener.local_addr() {
+                let port = addr.port() as u32;
+                // Drop the listener immediately to release the port
+                drop(listener);
+                
+                // Verify the port is still available by trying to bind again
+                if TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok() {
+                    return port;
+                }
+            }
+        }
+    }
+    
+    // Fallback to a random port in a high range
+    TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to find free port")
+        .local_addr()
+        .expect("Failed to get local address")
+        .port() as u32
 }
 
 fn get_user_shell() -> String {
@@ -182,7 +203,8 @@ fn spawn_sidecar(app: &AppHandle, port: u32) -> CommandChild {
     child
 }
 
-async fn is_server_running(port: u32) -> bool {
+// Simple check if port is accepting connections
+async fn is_port_listening(port: u32) -> bool {
     TcpSocket::new_v4()
         .unwrap()
         .connect(SocketAddr::new(
@@ -191,6 +213,32 @@ async fn is_server_running(port: u32) -> bool {
         ))
         .await
         .is_ok()
+}
+
+// Check if an OpenCode server is already running on the port (for initial check)
+async fn is_opencode_server_running(port: u32) -> bool {
+    if !is_port_listening(port).await {
+        return false;
+    }
+    
+    // Verify it's actually an OpenCode server by checking health endpoint
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
+        .ok();
+    
+    if let Some(client) = client {
+        if let Ok(resp) = client
+            .get(format!("http://127.0.0.1:{}/global/health", port))
+            .send()
+            .await
+        {
+            return resp.status().is_success();
+        }
+    }
+    
+    // If we can't verify via health check, it might be another service
+    false
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -259,33 +307,48 @@ pub fn run() {
             }
 
             let window = window_builder.build().expect("Failed to create window");
+            
+            // Open devtools for debugging
+            #[cfg(debug_assertions)]
+            window.open_devtools();
+            
+            // Also open in release builds for troubleshooting
+            #[cfg(not(debug_assertions))]
+            window.open_devtools();
 
             let (tx, rx) = tokio::sync::oneshot::channel();
             app.manage(ServerState::new(None, rx));
 
             {
                 let app = app.clone();
+                println!("Starting async task for sidecar management...");
                 tauri::async_runtime::spawn(async move {
-                    let should_spawn_sidecar = !is_server_running(port).await;
+                    println!("Async task started - checking for existing server on port {}", port);
+                    
+                    // Check if an OpenCode server is already running on this port
+                    let should_spawn_sidecar = !is_opencode_server_running(port).await;
+                    println!("Should spawn sidecar: {}", should_spawn_sidecar);
 
                     let (child, res) = if should_spawn_sidecar {
+                        println!("Spawning sidecar...");
                         let child = spawn_sidecar(&app, port);
+                        println!("Sidecar spawned, waiting for server...");
 
                         let timestamp = Instant::now();
                         let res = loop {
-                            if timestamp.elapsed() > Duration::from_secs(7) {
+                            if timestamp.elapsed() > Duration::from_secs(15) {
                                 break Err(format!(
                                     "Failed to spawn OpenCode Server. Logs:\n{}",
                                     get_logs(app.clone()).await.unwrap()
                                 ));
                             }
 
-                            tokio::time::sleep(Duration::from_millis(10)).await;
+                            tokio::time::sleep(Duration::from_millis(100)).await;
 
-                            if is_server_running(port).await {
-                                // give the server a little bit more time to warm up
-                                tokio::time::sleep(Duration::from_millis(10)).await;
-
+                            // Use simple port check for waiting loop (faster)
+                            if is_port_listening(port).await {
+                                // Give the server a bit more time to fully initialize
+                                tokio::time::sleep(Duration::from_millis(500)).await;
                                 break Ok(());
                             }
                         };

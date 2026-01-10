@@ -106,11 +106,11 @@ export const RunCommand = cmd({
         const file = Bun.file(resolvedPath)
         const stats = await file.stat().catch(() => {})
         if (!stats) {
-          UI.error(`File not found: ${filePath}`)
+          UI.error(`未找到文件: ${filePath}`)
           process.exit(1)
         }
         if (!(await file.exists())) {
-          UI.error(`File not found: ${filePath}`)
+          UI.error(`未找到文件: ${filePath}`)
           process.exit(1)
         }
 
@@ -129,7 +129,7 @@ export const RunCommand = cmd({
     if (!process.stdin.isTTY) message += "\n" + (await Bun.stdin.text())
 
     if (message.trim().length === 0 && !args.command) {
-      UI.error("You must provide a message or a command")
+      UI.error("必须提供消息或命令")
       process.exit(1)
     }
 
@@ -297,7 +297,7 @@ export const RunCommand = cmd({
       })()
 
       if (!sessionID) {
-        UI.error("Session not found")
+        UI.error("未找到会话")
         process.exit(1)
       }
 
@@ -325,7 +325,7 @@ export const RunCommand = cmd({
         const exists = await Command.get(args.command)
         if (!exists) {
           server.stop()
-          UI.error(`Command "${args.command}" not found`)
+          UI.error(`未找到命令 "${args.command}"`)
           process.exit(1)
         }
       }
@@ -350,7 +350,7 @@ export const RunCommand = cmd({
 
       if (!sessionID) {
         server.stop()
-        UI.error("Session not found")
+        UI.error("未找到会话")
         process.exit(1)
       }
 

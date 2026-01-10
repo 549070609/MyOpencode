@@ -22,7 +22,9 @@ import { createStore, produce, reconcile } from "solid-js/store"
 import { Binary } from "@opencode-ai/util/binary"
 import { retry } from "@opencode-ai/util/retry"
 import { useGlobalSDK } from "./global-sdk"
+import { usePlatform } from "./platform"
 import { ErrorPage, type InitError } from "../pages/error"
+import { Logo } from "@opencode-ai/ui/logo"
 import { batch, createContext, useContext, onCleanup, onMount, type ParentProps, Switch, Match } from "solid-js"
 import { showToast } from "@opencode-ai/ui/toast"
 import { getFilename } from "@opencode-ai/util/path"
@@ -64,6 +66,7 @@ type State = {
 
 function createGlobalSync() {
   const globalSDK = useGlobalSDK()
+  const platform = usePlatform()
   const [globalStore, setGlobalStore] = createStore<{
     ready: boolean
     error?: InitError
@@ -135,44 +138,98 @@ function createGlobalSync() {
   }
 
   async function bootstrapInstance(directory: string) {
-    if (!directory) return
+    console.log("[bootstrapInstance] Starting for directory:", directory)
+    console.log("[bootstrapInstance] platform.fetch:", platform.fetch ? "defined" : "undefined")
+    console.log("[bootstrapInstance] platform.platform:", platform.platform)
+    if (!directory) {
+      console.warn("[bootstrapInstance] No directory provided, skipping")
+      return
+    }
     const [store, setStore] = child(directory)
+    
+    // For localhost requests, use native fetch as tauriFetch has issues with localhost
+    const isLocalhost = globalSDK.url.includes("127.0.0.1") || globalSDK.url.includes("localhost")
+    const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
+    console.log("[bootstrapInstance] Using fetchFn:", isLocalhost ? "native (localhost)" : "platform")
+    
     const sdk = createOpencodeClient({
       baseUrl: globalSDK.url,
+      fetch: fetchFn,
       directory,
       throwOnError: true,
     })
 
-    const blockingRequests = {
-      project: () => sdk.project.current().then((x) => setStore("project", x.data!.id)),
-      provider: () =>
-        sdk.provider.list().then((x) => {
-          const data = x.data!
-          setStore("provider", {
-            ...data,
-            all: data.all.map((provider) => ({
-              ...provider,
-              models: Object.fromEntries(
-                Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated"),
-              ),
-            })),
-          })
-        }),
-      agent: () => sdk.app.agents().then((x) => setStore("agent", x.data ?? [])),
-      config: () => sdk.config.get().then((x) => setStore("config", x.data!)),
+    console.log("[bootstrapInstance] SDK created with baseUrl:", globalSDK.url)
+
+    const INSTANCE_REQUEST_TIMEOUT = 10000 // 10 seconds per request
+
+    function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`${name} timed out after ${ms}ms`)), ms),
+        ),
+      ])
     }
-    await Promise.all(Object.values(blockingRequests).map((p) => retry(p).catch((e) => setGlobalStore("error", e))))
+
+    const blockingRequests = {
+      project: async () => {
+        console.log("[bootstrapInstance] Fetching project.current()...")
+        const x = await withTimeout(sdk.project.current(), INSTANCE_REQUEST_TIMEOUT, "project.current()")
+        console.log("[bootstrapInstance] project.current() success:", x.data?.id)
+        setStore("project", x.data!.id)
+      },
+      provider: async () => {
+        console.log("[bootstrapInstance] Fetching provider.list()...")
+        const x = await withTimeout(sdk.provider.list(), INSTANCE_REQUEST_TIMEOUT, "provider.list()")
+        console.log("[bootstrapInstance] provider.list() success, providers:", x.data?.all?.length)
+        const data = x.data!
+        setStore("provider", {
+          ...data,
+          all: data.all.map((provider) => ({
+            ...provider,
+            models: Object.fromEntries(
+              Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated"),
+            ),
+          })),
+        })
+      },
+      agent: async () => {
+        console.log("[bootstrapInstance] Fetching app.agents()...")
+        const x = await withTimeout(sdk.app.agents(), INSTANCE_REQUEST_TIMEOUT, "app.agents()")
+        console.log("[bootstrapInstance] app.agents() success, agents:", x.data?.length)
+        setStore("agent", x.data ?? [])
+      },
+      config: async () => {
+        console.log("[bootstrapInstance] Fetching config.get()...")
+        const x = await withTimeout(sdk.config.get(), INSTANCE_REQUEST_TIMEOUT, "config.get()")
+        console.log("[bootstrapInstance] config.get() success")
+        setStore("config", x.data!)
+      },
+    }
+
+    console.log("[bootstrapInstance] Starting blocking requests...")
+    await Promise.all(
+      Object.entries(blockingRequests).map(([name, p]) =>
+        retry(p).catch((e) => {
+          console.error(`[bootstrapInstance] ${name} failed:`, e)
+          setGlobalStore("error", e)
+        }),
+      ),
+    )
       .then(() => {
+        console.log("[bootstrapInstance] Blocking requests complete, status:", store.status)
         if (store.status !== "complete") setStore("status", "partial")
+        console.log("[bootstrapInstance] Starting non-blocking requests...")
         // non-blocking
         Promise.all([
-          sdk.path.get().then((x) => setStore("path", x.data!)),
-          sdk.command.list().then((x) => setStore("command", x.data ?? [])),
-          sdk.session.status().then((x) => setStore("session_status", x.data!)),
+          sdk.path.get().then((x) => { console.log("[bootstrapInstance] path.get() done"); setStore("path", x.data!) }),
+          sdk.command.list().then((x) => { console.log("[bootstrapInstance] command.list() done"); setStore("command", x.data ?? []) }),
+          sdk.session.status().then((x) => { console.log("[bootstrapInstance] session.status() done"); setStore("session_status", x.data!) }),
           loadSessions(directory),
-          sdk.mcp.status().then((x) => setStore("mcp", x.data!)),
-          sdk.lsp.status().then((x) => setStore("lsp", x.data!)),
-          sdk.vcs.get().then((x) => setStore("vcs", x.data)),
+          sdk.mcp.status().then((x) => { console.log("[bootstrapInstance] mcp.status() done"); setStore("mcp", x.data!) }),
+          sdk.lsp.status().then((x) => { console.log("[bootstrapInstance] lsp.status() done"); setStore("lsp", x.data!) }),
+          sdk.vcs.get().then((x) => { console.log("[bootstrapInstance] vcs.get() done"); setStore("vcs", x.data) }),
           sdk.permission.list().then((x) => {
             const grouped: Record<string, PermissionRequest[]> = {}
             for (const perm of x.data ?? []) {
@@ -206,10 +263,16 @@ function createGlobalSync() {
             })
           }),
         ]).then(() => {
+          console.log("[bootstrapInstance] All non-blocking requests complete, setting status to complete")
           setStore("status", "complete")
+        }).catch((e) => {
+          console.error("[bootstrapInstance] Non-blocking requests failed:", e)
         })
       })
-      .catch((e) => setGlobalStore("error", e))
+      .catch((e) => {
+        console.error("[bootstrapInstance] Blocking requests failed:", e)
+        setGlobalStore("error", e)
+      })
   }
 
   const unsub = globalSDK.event.listen((e) => {
@@ -394,8 +457,11 @@ function createGlobalSync() {
         break
       }
       case "lsp.updated": {
+        const isLocalhost = globalSDK.url?.includes("127.0.0.1") || globalSDK.url?.includes("localhost")
+        const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
         const sdk = createOpencodeClient({
           baseUrl: globalSDK.url,
+          fetch: fetchFn,
           directory,
           throwOnError: true,
         })
@@ -407,60 +473,176 @@ function createGlobalSync() {
   onCleanup(unsub)
 
   async function bootstrap() {
-    const health = await globalSDK.client.global
-      .health()
-      .then((x) => x.data)
-      .catch(() => undefined)
-    if (!health?.healthy) {
-      setGlobalStore(
-        "error",
-        new Error(`Could not connect to server. Is there a server running at \`${globalSDK.url}\`?`),
-      )
+    console.log("[bootstrap] Starting bootstrap, server URL:", globalSDK.url)
+    console.log("[bootstrap] platform.fetch:", platform.fetch ? "defined" : "undefined")
+
+    if (!globalSDK.url) {
+      console.error("[bootstrap] No server URL available!")
+      setGlobalStore("error", new Error("No server URL configured"))
       return
     }
 
-    return Promise.all([
-      retry(() =>
-        globalSDK.client.path.get().then((x) => {
-          setGlobalStore("path", x.data!)
-        }),
-      ),
-      retry(() =>
-        globalSDK.client.project.list().then(async (x) => {
-          const projects = (x.data ?? [])
-            .filter((p) => !!p?.id)
-            .filter((p) => !!p.worktree && !p.worktree.includes("opencode-test"))
-            .slice()
-            .sort((a, b) => a.id.localeCompare(b.id))
-          setGlobalStore("project", projects)
-        }),
-      ),
-      retry(() =>
-        globalSDK.client.provider.list().then((x) => {
-          const data = x.data!
-          setGlobalStore("provider", {
-            ...data,
-            all: data.all.map((provider) => ({
-              ...provider,
-              models: Object.fromEntries(
-                Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated"),
-              ),
-            })),
-          })
-        }),
-      ),
-      retry(() =>
-        globalSDK.client.provider.auth().then((x) => {
-          setGlobalStore("provider_auth", x.data ?? {})
-        }),
-      ),
+    // For localhost requests, use native fetch as tauriFetch has issues with localhost
+    // tauriFetch returns 502 for localhost requests in some cases
+    const isLocalhost = globalSDK.url.includes("127.0.0.1") || globalSDK.url.includes("localhost")
+    const fetchFn = isLocalhost ? globalThis.fetch : (platform.fetch ?? globalThis.fetch)
+    console.log("[bootstrap] Using fetch:", isLocalhost ? "native (localhost)" : "platform")
+
+    // Wait for server to be healthy with retry - reduced timeout for faster feedback
+    const maxWait = 15000
+    const interval = 500
+    const start = Date.now()
+
+    let health: { healthy?: boolean } | undefined
+    let attempts = 0
+    let lastError: unknown
+
+    while (Date.now() - start < maxWait) {
+      attempts++
+      console.log(`[bootstrap] Health check attempt ${attempts}...`)
+      try {
+        // Add timeout to individual health check request
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          console.log("[bootstrap] Health check request timeout, aborting...")
+          controller.abort()
+        }, 5000)
+
+        console.log("[bootstrap] Sending health request to:", globalSDK.url)
+        const response = await fetchFn(`${globalSDK.url}/global/health`, {
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+
+        console.log("[bootstrap] Health fetch response status:", response.status)
+        const data = await response.json()
+        console.log("[bootstrap] Health response data:", data)
+        health = data
+        if (health?.healthy) {
+          console.log("[bootstrap] Server is healthy!")
+          break
+        }
+      } catch (e) {
+        lastError = e
+        console.log("[bootstrap] Health check error:", e)
+      }
+
+      await new Promise((r) => setTimeout(r, interval))
+    }
+
+    if (!health?.healthy) {
+      console.log("[bootstrap] Server health check failed after", attempts, "attempts")
+      const errorMsg = lastError
+        ? `Server at ${globalSDK.url} returned error: ${lastError}`
+        : `Could not connect to server at ${globalSDK.url} after ${attempts} attempts`
+      setGlobalStore("error", new Error(errorMsg))
+      return
+    }
+
+    console.log("[bootstrap] Starting data fetch...")
+
+    // Helper to fetch with timeout using platform.fetch
+    const fetchWithTimeout = async (endpoint: string, timeout = 10000) => {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+      try {
+        const response = await fetchFn(`${globalSDK.url}${endpoint}`, {
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return await response.json()
+      } catch (e) {
+        clearTimeout(timeoutId)
+        throw e
+      }
+    }
+
+    // Use Promise.allSettled to continue even if some requests fail
+    const results = await Promise.allSettled([
+      (async () => {
+        console.log("[bootstrap] Fetching path...")
+        const data = await fetchWithTimeout("/path")
+        console.log("[bootstrap] path.get() success")
+        setGlobalStore("path", data)
+        return "path"
+      })(),
+      (async () => {
+        console.log("[bootstrap] Fetching projects...")
+        const data = await fetchWithTimeout("/project")
+        console.log("[bootstrap] project.list() success, count:", data?.length)
+        const projects = (data ?? [])
+          .filter((p: any) => !!p?.id)
+          .filter((p: any) => !!p.worktree && !p.worktree.includes("opencode-test"))
+          .slice()
+          .sort((a: any, b: any) => a.id.localeCompare(b.id))
+        setGlobalStore("project", projects)
+        return "project"
+      })(),
+      (async () => {
+        console.log("[bootstrap] Fetching providers...")
+        const data = await fetchWithTimeout("/provider")
+        console.log("[bootstrap] provider.list() success")
+        setGlobalStore("provider", {
+          ...data,
+          all: (data.all ?? []).map((provider: any) => ({
+            ...provider,
+            models: Object.fromEntries(
+              Object.entries(provider.models ?? {}).filter(([, info]: [string, any]) => info.status !== "deprecated"),
+            ),
+          })),
+        })
+        return "provider"
+      })(),
+      (async () => {
+        console.log("[bootstrap] Fetching provider auth...")
+        const data = await fetchWithTimeout("/provider/auth")
+        console.log("[bootstrap] provider.auth() success")
+        setGlobalStore("provider_auth", data ?? {})
+        return "provider_auth"
+      })(),
     ])
-      .then(() => setGlobalStore("ready", true))
-      .catch((e) => setGlobalStore("error", e))
+
+    // Log results
+    const fulfilled = results.filter((r) => r.status === "fulfilled")
+    const rejected = results.filter((r) => r.status === "rejected")
+    console.log("[bootstrap] Results - fulfilled:", fulfilled.length, "rejected:", rejected.length)
+
+    if (rejected.length > 0) {
+      console.error("[bootstrap] Some requests failed:")
+      rejected.forEach((r, i) => {
+        if (r.status === "rejected") {
+          console.error(`  [${i}]`, r.reason)
+        }
+      })
+    }
+
+    // If critical requests failed, show error
+    // path.get() is critical
+    if (results[0].status === "rejected") {
+      console.error("[bootstrap] Critical request (path.get) failed")
+      setGlobalStore("error", (results[0] as PromiseRejectedResult).reason)
+      return
+    }
+
+    // Set ready even if some non-critical requests failed
+    console.log("[bootstrap] Setting ready=true")
+    setGlobalStore("ready", true)
   }
 
   onMount(() => {
+    console.log("[GlobalSync] onMount - calling bootstrap()")
     bootstrap()
+
+    // Fallback timeout - if bootstrap hasn't completed after 30 seconds, show error
+    const fallbackTimeout = setTimeout(() => {
+      if (!globalStore.ready && !globalStore.error) {
+        console.error("[GlobalSync] Bootstrap timeout - forcing error state")
+        setGlobalStore("error", new Error("Application initialization timed out. Please check your connection and restart."))
+      }
+    }, 30000)
+
+    onCleanup(() => clearTimeout(fallbackTimeout))
   })
 
   return {
@@ -483,8 +665,21 @@ const GlobalSyncContext = createContext<ReturnType<typeof createGlobalSync>>()
 
 export function GlobalSyncProvider(props: ParentProps) {
   const value = createGlobalSync()
+
+  // Debug logging
+  console.log("[GlobalSyncProvider] Rendering - ready:", value.ready, "error:", value.error)
+
   return (
-    <Switch>
+    <Switch
+      fallback={
+        <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
+          <Logo class="w-xl opacity-12 animate-pulse" />
+          <div class="mt-8 text-14-regular text-text-weak">Loading...</div>
+          <div class="mt-2 text-12-regular text-text-weakest">Connecting to server...</div>
+          <div class="mt-4 text-10-regular text-text-weakest opacity-50">Check DevTools console for details</div>
+        </div>
+      }
+    >
       <Match when={value.error}>
         <ErrorPage error={value.error} />
       </Match>
@@ -500,3 +695,4 @@ export function useGlobalSync() {
   if (!context) throw new Error("useGlobalSync must be used within GlobalSyncProvider")
   return context
 }
+

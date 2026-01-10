@@ -775,7 +775,7 @@ def create_model_config_template(template_path):
     
     with open(template_path, 'w', encoding='utf-8') as f:
         f.write(template_content)
-    print(f'  配置文件: {config_path}')
+    print(f'  配置文件: {template_path}')
     
     return True
 

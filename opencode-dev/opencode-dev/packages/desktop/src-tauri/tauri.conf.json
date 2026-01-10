@@ -26,7 +26,7 @@
       "icons/dev/icon.ico"
     ],
     "active": true,
-    "targets": ["deb", "rpm", "dmg", "nsis", "app", "appimage"],
+    "targets": ["nsis"],
     "externalBin": ["sidecars/opencode-cli"],
     "macOS": {
       "entitlements": "./entitlements.plist"
@@ -35,7 +35,8 @@
       "nsis": {
         "installerIcon": "icons/dev/icon.ico",
         "headerImage": "assets/nsis-header.bmp",
-        "sidebarImage": "assets/nsis-sidebar.bmp"
+        "sidebarImage": "assets/nsis-sidebar.bmp",
+        "installMode": "perMachine"
       }
     }
   }

@@ -74,12 +74,14 @@ const platform: Platform = {
     }
 
     const WRITE_DEBOUNCE_MS = 250
+    const STORE_LOAD_TIMEOUT_MS = 3000 // Timeout for Store.load
 
     const storeCache = new Map<string, Promise<StoreLike>>()
     const apiCache = new Map<string, AsyncStorage & { flush: () => Promise<void> }>()
     const memoryCache = new Map<string, StoreLike>()
 
-    const createMemoryStore = () => {
+    const createMemoryStore = (name?: string) => {
+      console.log(`[Storage] Creating memory store${name ? ` for: ${name}` : ""}`)
       const data = new Map<string, string>()
       const store: StoreLike = {
         get: async (key) => data.get(key),
@@ -98,18 +100,47 @@ const platform: Platform = {
       return store
     }
 
+    // Helper to add timeout to a promise
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: () => T): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((resolve) => {
+          setTimeout(() => {
+            console.warn(`[Storage] Store.load timed out after ${ms}ms, using fallback`)
+            resolve(fallback())
+          }, ms)
+        }),
+      ])
+    }
+
     const getStore = (name: string) => {
       const cached = storeCache.get(name)
       if (cached) return cached
 
-      const store = Store.load(name).catch(() => {
+      console.log(`[Storage] Loading store: ${name}`)
+
+      const getFallbackStore = () => {
         const cached = memoryCache.get(name)
         if (cached) return cached
-
-        const memory = createMemoryStore()
+        const memory = createMemoryStore(name)
         memoryCache.set(name, memory)
         return memory
-      })
+      }
+
+      // Add timeout to Store.load to prevent hanging
+      const store = withTimeout(
+        Store.load(name)
+          .then((s) => {
+            console.log(`[Storage] Store loaded successfully: ${name}`)
+            return s as StoreLike
+          })
+          .catch((err) => {
+            console.warn(`[Storage] Store.load failed for ${name}:`, err)
+            return getFallbackStore()
+          }),
+        STORE_LOAD_TIMEOUT_MS,
+        getFallbackStore,
+      )
 
       storeCache.set(name, store)
       return store
@@ -283,10 +314,31 @@ render(() => {
 
 // Gate component that waits for the server to be ready
 function ServerGate(props: ParentProps) {
+  console.log("[ServerGate] Component mounting...")
+  console.log("[ServerGate] window.__OPENCODE__:", window.__OPENCODE__)
+
   const [status] = createResource(async () => {
-    if (window.__OPENCODE__?.serverReady) return
-    return await invoke("ensure_server_started")
+    console.log("[ServerGate] Resource fetcher starting...")
+    console.log("[ServerGate] serverReady:", window.__OPENCODE__?.serverReady)
+
+    if (window.__OPENCODE__?.serverReady) {
+      console.log("[ServerGate] Server already ready, skipping invoke")
+      return "ready"
+    }
+
+    try {
+      console.log("[ServerGate] Calling ensure_server_started...")
+      const result = await invoke("ensure_server_started")
+      console.log("[ServerGate] ensure_server_started returned:", result)
+      return result ?? "ready"
+    } catch (err) {
+      console.error("[ServerGate] ensure_server_started failed:", err)
+      throw err
+    }
   })
+
+  // Log status changes
+  console.log("[ServerGate] Render - status.state:", status.state, "status.error:", status.error)
 
   return (
     // Not using suspense as not all components are compatible with it (undefined refs)
@@ -296,12 +348,25 @@ function ServerGate(props: ParentProps) {
         <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
           <Logo class="w-xl opacity-12 animate-pulse" />
           <div class="mt-8 text-14-regular text-text-weak">Starting server...</div>
+          <div class="mt-2 text-12-regular text-text-weakest">
+            Port: {window.__OPENCODE__?.port ?? "unknown"}
+          </div>
+        </div>
+      }
+    >
+      <Show
+        when={!status.error}
+        fallback={
+          <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base text-text-weak">
+            <div class="text-16-medium text-red-500 mb-4">Server startup failed</div>
+            <div class="text-12-regular max-w-md text-center">{String(status.error)}</div>
         </div>
       }
     >
       {/* Trigger error boundary without rendering the returned value */}
       {(status(), null)}
       {props.children}
+      </Show>
     </Show>
   )
 }

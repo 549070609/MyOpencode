@@ -51,7 +51,7 @@ export type PromptRef = {
   submit(): void
 }
 
-const PLACEHOLDERS = ["Fix a TODO in the codebase", "What is the tech stack of this project?", "Fix broken tests"]
+const PLACEHOLDERS = ["修复代码库中的 TODO", "这个项目的技术栈是什么？", "修复失败的测试"]
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -76,7 +76,7 @@ export function Prompt(props: PromptProps) {
   function promptModelWarning() {
     toast.show({
       variant: "warning",
-      message: "Connect a provider to send prompts",
+      message: "连接提供商以发送提示",
       duration: 3000,
     })
     if (sync.data.provider.length === 0) {
@@ -153,9 +153,9 @@ export function Prompt(props: PromptProps) {
   command.register(() => {
     return [
       {
-        title: "Clear prompt",
+        title: "清空输入",
         value: "prompt.clear",
-        category: "Prompt",
+        category: "输入",
         disabled: true,
         onSelect: (dialog) => {
           input.extmarks.clear()
@@ -164,11 +164,11 @@ export function Prompt(props: PromptProps) {
         },
       },
       {
-        title: "Submit prompt",
+        title: "提交输入",
         value: "prompt.submit",
         disabled: true,
         keybind: "input_submit",
-        category: "Prompt",
+        category: "输入",
         onSelect: (dialog) => {
           if (!input.focused) return
           submit()
@@ -176,11 +176,11 @@ export function Prompt(props: PromptProps) {
         },
       },
       {
-        title: "Paste",
+        title: "粘贴",
         value: "prompt.paste",
         disabled: true,
         keybind: "input_paste",
-        category: "Prompt",
+        category: "输入",
         onSelect: async () => {
           const content = await Clipboard.read()
           if (content?.mime.startsWith("image/")) {
@@ -193,11 +193,11 @@ export function Prompt(props: PromptProps) {
         },
       },
       {
-        title: "Interrupt session",
+        title: "中断会话",
         value: "session.interrupt",
         keybind: "session_interrupt",
         disabled: status().type === "idle",
-        category: "Session",
+        category: "会话",
         onSelect: (dialog) => {
           if (autocomplete.visible) return
           if (!input.focused) return
@@ -224,8 +224,8 @@ export function Prompt(props: PromptProps) {
         },
       },
       {
-        title: "Open editor",
-        category: "Session",
+        title: "打开编辑器",
+        category: "会话",
         keybind: "editor_open",
         value: "prompt.editor",
         onSelect: async (dialog, trigger) => {
@@ -399,9 +399,9 @@ export function Prompt(props: PromptProps) {
 
   command.register(() => [
     {
-      title: "Stash prompt",
+      title: "暂存输入",
       value: "prompt.stash",
-      category: "Prompt",
+      category: "输入",
       disabled: !store.prompt.input,
       onSelect: (dialog) => {
         if (!store.prompt.input) return
@@ -417,9 +417,9 @@ export function Prompt(props: PromptProps) {
       },
     },
     {
-      title: "Stash pop",
+      title: "弹出暂存",
       value: "prompt.stash.pop",
-      category: "Prompt",
+      category: "输入",
       disabled: stash.list().length === 0,
       onSelect: (dialog) => {
         const entry = stash.pop()
@@ -433,9 +433,9 @@ export function Prompt(props: PromptProps) {
       },
     },
     {
-      title: "Stash list",
+      title: "暂存列表",
       value: "prompt.stash.list",
-      category: "Prompt",
+      category: "输入",
       disabled: stash.list().length === 0,
       onSelect: (dialog) => {
         dialog.replace(() => (
@@ -649,7 +649,7 @@ export function Prompt(props: PromptProps) {
     const currentOffset = input.visualCursor.offset
     const extmarkStart = currentOffset
     const count = store.prompt.parts.filter((x) => x.type === "file").length
-    const virtualText = `[Image ${count + 1}]`
+    const virtualText = `[图片 ${count + 1}]`
     const extmarkEnd = extmarkStart + virtualText.length
     const textToInsert = virtualText + " "
 
@@ -762,7 +762,7 @@ export function Prompt(props: PromptProps) {
             flexGrow={1}
           >
             <textarea
-              placeholder={props.sessionID ? undefined : `Ask anything... "${PLACEHOLDERS[store.placeholder]}"`}
+              placeholder={props.sessionID ? undefined : `随便问... "${PLACEHOLDERS[store.placeholder]}"`}
               textColor={keybind.leader ? theme.textMuted : theme.text}
               focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
               minHeight={1}
@@ -881,7 +881,7 @@ export function Prompt(props: PromptProps) {
                       event.preventDefault()
                       const content = await file.text().catch(() => {})
                       if (content) {
-                        pasteText(content, `[SVG: ${file.name ?? "image"}]`)
+                        pasteText(content, `[SVG: ${file.name ?? "图片"}]`)
                         return
                       }
                     }
@@ -909,7 +909,7 @@ export function Prompt(props: PromptProps) {
                   !sync.data.config.experimental?.disable_paste_summary
                 ) {
                   event.preventDefault()
-                  pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+                  pasteText(pastedContent, `[已粘贴约 ${lineCount} 行]`)
                   return
                 }
 
@@ -933,7 +933,7 @@ export function Prompt(props: PromptProps) {
             />
             <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1}>
               <text fg={highlight()}>
-                {store.mode === "shell" ? "Shell" : Locale.titlecase(local.agent.current().name)}{" "}
+                {store.mode === "shell" ? "命令行" : Locale.titlecase(local.agent.current().name)}{" "}
               </text>
               <Show when={store.mode === "normal"}>
                 <box flexDirection="row" gap={1}>
@@ -1003,7 +1003,7 @@ export function Prompt(props: PromptProps) {
                       const r = retry()
                       if (!r) return
                       if (r.message.includes("exceeded your current quota") && r.message.includes("gemini"))
-                        return "gemini is way too hot right now"
+                        return "gemini 现在太火爆了"
                       if (r.message.length > 80) return r.message.slice(0, 80) + "..."
                       return r.message
                     })
@@ -1027,7 +1027,7 @@ export function Prompt(props: PromptProps) {
                       const r = retry()
                       if (!r) return
                       if (isTruncated()) {
-                        DialogAlert.show(dialog, "Retry Error", r.message)
+                        DialogAlert.show(dialog, "重试错误", r.message)
                       }
                     }
 
@@ -1035,8 +1035,8 @@ export function Prompt(props: PromptProps) {
                       const r = retry()
                       if (!r) return ""
                       const baseMessage = message()
-                      const truncatedHint = isTruncated() ? " (click to expand)" : ""
-                      const retryInfo = ` [retrying ${seconds() > 0 ? `in ${seconds()}s ` : ""}attempt #${r.attempt}]`
+                      const truncatedHint = isTruncated() ? " (点击展开)" : ""
+                      const retryInfo = ` [重试中 ${seconds() > 0 ? `${seconds()}秒后 ` : ""}第 ${r.attempt} 次尝试]`
                       return baseMessage + truncatedHint + retryInfo
                     }
 
@@ -1053,7 +1053,7 @@ export function Prompt(props: PromptProps) {
               <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
                 esc{" "}
                 <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
-                  {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
+                  {store.interrupt > 0 ? "再次按下以中断" : "中断"}
                 </span>
               </text>
             </box>
@@ -1063,15 +1063,15 @@ export function Prompt(props: PromptProps) {
               <Switch>
                 <Match when={store.mode === "normal"}>
                   <text fg={theme.text}>
-                    {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>switch agent</span>
+                    {keybind.print("agent_cycle")} <span style={{ fg: theme.textMuted }}>切换代理</span>
                   </text>
                   <text fg={theme.text}>
-                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>commands</span>
+                    {keybind.print("command_list")} <span style={{ fg: theme.textMuted }}>命令</span>
                   </text>
                 </Match>
                 <Match when={store.mode === "shell"}>
                   <text fg={theme.text}>
-                    esc <span style={{ fg: theme.textMuted }}>exit shell mode</span>
+                    esc <span style={{ fg: theme.textMuted }}>退出命令行模式</span>
                   </text>
                 </Match>
               </Switch>

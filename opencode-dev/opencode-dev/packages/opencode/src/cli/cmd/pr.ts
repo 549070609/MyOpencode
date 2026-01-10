@@ -18,19 +18,19 @@ export const PrCommand = cmd({
       async fn() {
         const project = Instance.project
         if (project.vcs !== "git") {
-          UI.error("Could not find git repository. Please run this command from a git repository.")
+          UI.error("未找到 git 仓库，请在 git 仓库中运行此命令。")
           process.exit(1)
         }
 
         const prNumber = args.number
         const localBranchName = `pr/${prNumber}`
-        UI.println(`Fetching and checking out PR #${prNumber}...`)
+        UI.println(`正在获取并检出 PR #${prNumber}...`)
 
         // Use gh pr checkout with custom branch name
         const result = await $`gh pr checkout ${prNumber} --branch ${localBranchName} --force`.nothrow()
 
         if (result.exitCode !== 0) {
-          UI.error(`Failed to checkout PR #${prNumber}. Make sure you have gh CLI installed and authenticated.`)
+          UI.error(`检出 PR #${prNumber} 失败。请确保已安装并认证 gh CLI。`)
           process.exit(1)
         }
 
@@ -55,7 +55,7 @@ export const PrCommand = cmd({
               const remotes = (await $`git remote`.nothrow().text()).trim()
               if (!remotes.split("\n").includes(remoteName)) {
                 await $`git remote add ${remoteName} https://github.com/${forkOwner}/${forkName}.git`.nothrow()
-                UI.println(`Added fork remote: ${remoteName}`)
+                UI.println(`已添加 fork 远程仓库: ${remoteName}`)
               }
 
               // Set upstream to the fork so pushes go there
@@ -68,8 +68,8 @@ export const PrCommand = cmd({
               const sessionMatch = prInfo.body.match(/https:\/\/opncd\.ai\/s\/([a-zA-Z0-9_-]+)/)
               if (sessionMatch) {
                 const sessionUrl = sessionMatch[0]
-                UI.println(`Found opencode session: ${sessionUrl}`)
-                UI.println(`Importing session...`)
+                UI.println(`发现 opencode 会话: ${sessionUrl}`)
+                UI.println(`正在导入会话...`)
 
                 const importResult = await $`opencode import ${sessionUrl}`.nothrow()
                 if (importResult.exitCode === 0) {
@@ -78,7 +78,7 @@ export const PrCommand = cmd({
                   const sessionIdMatch = importOutput.match(/Imported session: ([a-zA-Z0-9_-]+)/)
                   if (sessionIdMatch) {
                     sessionId = sessionIdMatch[1]
-                    UI.println(`Session imported: ${sessionId}`)
+                    UI.println(`会话已导入: ${sessionId}`)
                   }
                 }
               }
@@ -86,9 +86,9 @@ export const PrCommand = cmd({
           }
         }
 
-        UI.println(`Successfully checked out PR #${prNumber} as branch '${localBranchName}'`)
+        UI.println(`成功检出 PR #${prNumber} 为分支 '${localBranchName}'`)
         UI.println()
-        UI.println("Starting opencode...")
+        UI.println("正在启动 opencode...")
         UI.println()
 
         // Launch opencode TUI with session ID if available

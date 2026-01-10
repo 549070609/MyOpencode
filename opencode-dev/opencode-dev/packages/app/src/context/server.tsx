@@ -34,6 +34,9 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
   init: (props: { defaultUrl: string }) => {
     const platform = usePlatform()
 
+    console.log("[ServerProvider] Initializing with defaultUrl:", props.defaultUrl)
+    console.log("[ServerProvider] Platform:", platform.platform)
+
     const [store, setStore, _, ready] = persisted(
       Persist.global("server", ["server.v3"]),
       createStore({
@@ -47,6 +50,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
     function setActive(input: string) {
       const url = normalizeServerUrl(input)
       if (!url) return
+      console.log("[ServerProvider] setActive:", url)
       setActiveRaw(url)
     }
 
@@ -56,6 +60,7 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
 
       const fallback = normalizeServerUrl(props.defaultUrl)
       if (fallback && url === fallback) {
+        console.log("[ServerProvider] add: Using default URL", url)
         setActiveRaw(url)
         return
       }
@@ -81,22 +86,64 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
       })
     }
 
+    // Fallback timer to ensure we don't wait forever for persisted store
+    const FALLBACK_TIMEOUT_MS = 3000
+    let fallbackApplied = false
+
+    // Effect to set initial active URL once persisted store is ready
     createEffect(() => {
-      if (!ready()) return
-      if (active()) return
+      const isReady = ready()
+      const currentActive = active()
+      console.log("[ServerProvider] Effect - ready:", isReady, "active:", currentActive)
+
+      if (!isReady) {
+        console.log("[ServerProvider] Waiting for persisted store to be ready...")
+        return
+      }
+      if (currentActive) {
+        console.log("[ServerProvider] Already have active URL:", currentActive)
+        return
+      }
       const url = normalizeServerUrl(props.defaultUrl)
-      if (!url) return
+      if (!url) {
+        console.warn("[ServerProvider] No default URL available!")
+        return
+      }
+      console.log("[ServerProvider] Setting active URL from default:", url)
       setActiveRaw(url)
     })
 
-    const isReady = createMemo(() => ready() && !!active())
+    // Fallback: if persisted store takes too long, use default URL directly
+    setTimeout(() => {
+      if (active()) {
+        console.log("[ServerProvider] Fallback timer: URL already set, skipping")
+        return
+      }
+      console.warn("[ServerProvider] Fallback timer triggered after", FALLBACK_TIMEOUT_MS, "ms")
+      fallbackApplied = true
+      const url = normalizeServerUrl(props.defaultUrl)
+      if (url) {
+        console.log("[ServerProvider] Fallback: Setting active URL to:", url)
+        setActiveRaw(url)
+      }
+    }, FALLBACK_TIMEOUT_MS)
+
+    const isReady = createMemo(() => {
+      // Ready if we have an active URL (either from persisted store or fallback)
+      const hasActive = !!active()
+      console.log("[ServerProvider] isReady check - ready():", ready(), "hasActive:", hasActive, "fallbackApplied:", fallbackApplied)
+      return hasActive
+    })
 
     const [healthy, setHealthy] = createSignal<boolean | undefined>(undefined)
 
     const check = (url: string) => {
+      // For localhost requests, use native fetch as tauriFetch has issues with localhost
+      const isLocalhost = url?.includes("127.0.0.1") || url?.includes("localhost")
+      const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
       const sdk = createOpencodeClient({
         baseUrl: url,
-        fetch: platform.fetch,
+        fetch: fetchFn,
         signal: AbortSignal.timeout(3000),
       })
       return sdk.global

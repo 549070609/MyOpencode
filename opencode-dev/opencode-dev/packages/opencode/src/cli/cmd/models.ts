@@ -28,7 +28,7 @@ export const ModelsCommand = cmd({
   handler: async (args) => {
     if (args.refresh) {
       await ModelsDev.refresh()
-      UI.println(UI.Style.TEXT_SUCCESS_BOLD + "Models cache refreshed" + UI.Style.TEXT_NORMAL)
+      UI.println(UI.Style.TEXT_SUCCESS_BOLD + "模型缓存已刷新" + UI.Style.TEXT_NORMAL)
     }
 
     await Instance.provide({
@@ -52,7 +52,7 @@ export const ModelsCommand = cmd({
         if (args.provider) {
           const provider = providers[args.provider]
           if (!provider) {
-            UI.error(`Provider not found: ${args.provider}`)
+            UI.error(`未找到提供商: ${args.provider}`)
             return
           }
 

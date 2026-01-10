@@ -197,7 +197,7 @@ export const GithubInstallCommand = cmd({
       async fn() {
         {
           UI.empty()
-          prompts.intro("Install GitHub agent")
+          prompts.intro("安装 GitHub Agent")
           const app = await getAppInfo()
           await installGitHubApp()
 
@@ -229,14 +229,14 @@ export const GithubInstallCommand = cmd({
 
             prompts.outro(
               [
-                "Next steps:",
+                "接下来:",
                 "",
-                `    1. Commit the \`${WORKFLOW_FILE}\` file and push`,
+                `    1. 提交 \`${WORKFLOW_FILE}\` 文件并推送`,
                 step2,
                 "",
-                "    3. Go to a GitHub issue and comment `/oc summarize` to see the agent in action",
+                "    3. 在 GitHub issue 中评论 `/oc summarize` 查看 Agent 运行效果",
                 "",
-                "   Learn more about the GitHub agent - https://opencode.ai/docs/github/#usage-examples",
+                "   了解更多 GitHub Agent 信息 - https://opencode.ai/docs/github/#usage-examples",
               ].join("\n"),
             )
           }
@@ -244,7 +244,7 @@ export const GithubInstallCommand = cmd({
           async function getAppInfo() {
             const project = Instance.project
             if (project.vcs !== "git") {
-              prompts.log.error(`Could not find git repository. Please run this command from a git repository.`)
+              prompts.log.error(`未找到 git 仓库。请在 git 仓库中运行此命令。`)
               throw new UI.CancelledError()
             }
 
@@ -252,7 +252,7 @@ export const GithubInstallCommand = cmd({
             const info = (await $`git remote get-url origin`.quiet().nothrow().text()).trim()
             const parsed = parseGitHubRemote(info)
             if (!parsed) {
-              prompts.log.error(`Could not find git repository. Please run this command from a git repository.`)
+              prompts.log.error(`未找到 git 仓库。请在 git 仓库中运行此命令。`)
               throw new UI.CancelledError()
             }
             return { owner: parsed.owner, repo: parsed.repo, root: Instance.worktree }
@@ -266,7 +266,7 @@ export const GithubInstallCommand = cmd({
               google: 3,
             }
             let provider = await prompts.select({
-              message: "Select provider",
+              message: "选择提供商",
               maxItems: 8,
               options: pipe(
                 providers,
@@ -278,7 +278,7 @@ export const GithubInstallCommand = cmd({
                 map((x) => ({
                   label: x.name,
                   value: x.id,
-                  hint: priority[x.id] === 0 ? "recommended" : undefined,
+                  hint: priority[x.id] === 0 ? "推荐" : undefined,
                 })),
               ),
             })
@@ -292,7 +292,7 @@ export const GithubInstallCommand = cmd({
             const providerData = providers[provider]!
 
             const model = await prompts.select({
-              message: "Select model",
+              message: "选择模型",
               maxItems: 8,
               options: pipe(
                 providerData.models,
@@ -311,11 +311,11 @@ export const GithubInstallCommand = cmd({
 
           async function installGitHubApp() {
             const s = prompts.spinner()
-            s.start("Installing GitHub app")
+            s.start("安装 GitHub App")
 
             // Get installation
             const installation = await getInstallation()
-            if (installation) return s.stop("GitHub app already installed")
+            if (installation) return s.stop("GitHub App 已安装")
 
             // Open browser
             const url = "https://github.com/apps/opencode-agent"
@@ -328,12 +328,12 @@ export const GithubInstallCommand = cmd({
 
             exec(command, (error) => {
               if (error) {
-                prompts.log.warn(`Could not open browser. Please visit: ${url}`)
+                prompts.log.warn(`无法打开浏览器，请访问: ${url}`)
               }
             })
 
             // Wait for installation
-            s.message("Waiting for GitHub app to be installed")
+            s.message("等待 GitHub App 安装完成")
             const MAX_RETRIES = 120
             let retries = 0
             do {
@@ -342,7 +342,7 @@ export const GithubInstallCommand = cmd({
 
               if (retries > MAX_RETRIES) {
                 s.stop(
-                  `Failed to detect GitHub app installation. Make sure to install the app for the \`${app.owner}/${app.repo}\` repository.`,
+                  `未检测到 GitHub App 安装。请确保为 \`${app.owner}/${app.repo}\` 仓库安装了该 App。`,
                 )
                 throw new UI.CancelledError()
               }
@@ -351,7 +351,7 @@ export const GithubInstallCommand = cmd({
               await Bun.sleep(1000)
             } while (true)
 
-            s.stop("Installed GitHub app")
+            s.stop("GitHub App 安装完成")
 
             async function getInstallation() {
               return await fetch(
@@ -401,7 +401,7 @@ jobs:
           model: ${provider}/${model}`,
             )
 
-            prompts.log.success(`Added workflow file: "${WORKFLOW_FILE}"`)
+            prompts.log.success(`已添加工作流文件: "${WORKFLOW_FILE}"`)
           }
         }
       },
@@ -736,7 +736,7 @@ export const GithubRunCommand = cmd({
             if (reviewContext) {
               return `Review this code change and suggest improvements for the commented lines:\n\nFile: ${reviewContext.file}\nLines: ${reviewContext.line}\n\n${reviewContext.diffHunk}`
             }
-            return "Summarize this thread"
+            return "总结此讨论"
           }
           if (mentions.some((m) => bodyLower.includes(m))) {
             if (reviewContext) {

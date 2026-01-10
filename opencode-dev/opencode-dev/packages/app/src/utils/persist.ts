@@ -113,10 +113,13 @@ export function persisted<T>(
   const platform = usePlatform()
   const config: PersistTarget = typeof target === "string" ? { key: target } : target
 
+  console.log("[Persist] Creating persisted store:", config.key, "platform:", platform.platform)
+
   const defaults = snapshot(store[0])
   const legacy = config.legacy ?? []
 
   const isDesktop = platform.platform === "desktop" && !!platform.storage
+  console.log("[Persist] isDesktop:", isDesktop)
 
   const currentStorage = (() => {
     if (isDesktop) return platform.storage?.(config.storage)
@@ -231,14 +234,36 @@ export function persisted<T>(
   const [state, setState, init] = makePersisted(store, { name: config.key, storage })
 
   const isAsync = init instanceof Promise
+  console.log("[Persist] makePersisted returned, isAsync:", isAsync, "for key:", config.key)
+
   const [ready] = createResource(
     () => init,
     async (initValue) => {
-      if (initValue instanceof Promise) await initValue
-      return true
+      console.log("[Persist] Resource fetcher running for:", config.key)
+      try {
+        if (initValue instanceof Promise) {
+          console.log("[Persist] Awaiting init promise for:", config.key)
+          await Promise.race([
+            initValue,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Persist init timeout")), 5000),
+            ),
+          ])
+          console.log("[Persist] Init promise resolved for:", config.key)
+        }
+        return true
+      } catch (err) {
+        console.warn("[Persist] Init failed for:", config.key, err)
+        // Return true anyway to unblock the UI - data will be in memory
+        return true
+      }
     },
     { initialValue: !isAsync },
   )
 
-  return [state, setState, init, () => ready() === true]
+  return [state, setState, init, () => {
+    const isReady = ready() === true
+    console.log("[Persist] ready() check for:", config.key, "=", isReady)
+    return isReady
+  }]
 }

@@ -69,7 +69,10 @@ export function DialogSelectServer() {
     const results: Record<string, ServerStatus> = {}
     await Promise.all(
       items().map(async (url) => {
-        results[url] = await checkHealth(url, platform.fetch)
+        // For localhost requests, use native fetch as tauriFetch has issues with localhost
+        const isLocalhost = url?.includes("127.0.0.1") || url?.includes("localhost")
+        const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
+        results[url] = await checkHealth(url, fetchFn)
       }),
     )
     setStore("status", reconcile(results))
@@ -102,7 +105,10 @@ export function DialogSelectServer() {
     setStore("adding", true)
     setStore("error", "")
 
-    const result = await checkHealth(value, platform.fetch)
+    // For localhost requests, use native fetch as tauriFetch has issues with localhost
+    const isLocalhost = value?.includes("127.0.0.1") || value?.includes("localhost")
+    const fetchFn = isLocalhost ? globalThis.fetch : platform.fetch
+    const result = await checkHealth(value, fetchFn)
     setStore("adding", false)
 
     if (!result.healthy) {
