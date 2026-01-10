@@ -1,7 +1,7 @@
-import { ComponentProps, splitProps } from "solid-js"
+import { ComponentProps, ParentProps, splitProps } from "solid-js"
 import { usePlatform } from "@/context/platform"
 
-export interface LinkProps extends ComponentProps<"button"> {
+export interface LinkProps extends ParentProps, Omit<ComponentProps<"button">, "children"> {
   href: string
 }
 

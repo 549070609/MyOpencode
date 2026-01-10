@@ -1,0 +1,11 @@
+{
+  "plugin": [
+    "oh-my-opencode"
+  ],
+  "agents": {
+    "sisyphus": {
+      "model": "anthropic/claude-opus-4-5",
+      "description": "The default agent. A powerful AI orchestrator."
+    }
+  }
+}

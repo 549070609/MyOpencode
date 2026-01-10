@@ -6,6 +6,7 @@ import { getDirectory, getFilename } from "@opencode-ai/util/path"
 import { createMemo } from "solid-js"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
+import { useI18n } from "@/i18n"
 
 interface DialogSelectDirectoryProps {
   title?: string
@@ -17,6 +18,7 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
   const sync = useGlobalSync()
   const sdk = useGlobalSDK()
   const dialog = useDialog()
+  const { t } = useI18n()
 
   const home = createMemo(() => sync.data.path.home)
   const root = createMemo(() => sync.data.path.home || sync.data.path.directory)
@@ -81,10 +83,10 @@ export function DialogSelectDirectory(props: DialogSelectDirectoryProps) {
   }
 
   return (
-    <Dialog title={props.title ?? "Open project"}>
+    <Dialog title={props.title ?? t("layout.openProject")}>
       <List
-        search={{ placeholder: "Search folders", autofocus: true }}
-        emptyMessage="No folders found"
+        search={{ placeholder: t("file.searchFolders"), autofocus: true }}
+        emptyMessage={t("file.noFoldersFound")}
         items={directories}
         key={(x) => x}
         onSelect={(path) => {

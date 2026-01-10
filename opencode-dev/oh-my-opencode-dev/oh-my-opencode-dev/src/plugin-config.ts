@@ -115,7 +115,7 @@ export function loadPluginConfig(
 
   // Load user config first (base)
   let config: OhMyOpenCodeConfig =
-    loadConfigFromPath(userConfigPath, ctx) ?? {};
+    loadConfigFromPath(userConfigPath, ctx) ?? { language: "en" };
 
   // Override with project config
   const projectConfig = loadConfigFromPath(projectConfigPath, ctx);

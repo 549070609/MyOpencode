@@ -4,6 +4,7 @@ import { batch, createMemo } from "solid-js"
 import { useParams } from "@solidjs/router"
 import { useSDK } from "./sdk"
 import { Persist, persisted } from "@/utils/persist"
+import { useI18n } from "@/i18n"
 
 export type LocalPTY = {
   id: string
@@ -19,6 +20,7 @@ export const { use: useTerminal, provider: TerminalProvider } = createSimpleCont
   init: () => {
     const sdk = useSDK()
     const params = useParams()
+    const { t } = useI18n()
     const legacy = createMemo(() => `${params.dir}/terminal${params.id ? "/" + params.id : ""}.v1`)
 
     const [store, setStore, _, ready] = persisted(
@@ -37,7 +39,7 @@ export const { use: useTerminal, provider: TerminalProvider } = createSimpleCont
       active: createMemo(() => store.active),
       new() {
         sdk.client.pty
-          .create({ title: `Terminal ${store.all.length + 1}` })
+          .create({ title: `${t("common.terminal")} ${store.all.length + 1}` })
           .then((pty) => {
             const id = pty.data?.id
             if (!id) return
@@ -45,7 +47,7 @@ export const { use: useTerminal, provider: TerminalProvider } = createSimpleCont
               ...store.all,
               {
                 id,
-                title: pty.data?.title ?? "Terminal",
+                title: pty.data?.title ?? t("common.terminal"),
               },
             ])
             setStore("active", id)

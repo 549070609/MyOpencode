@@ -25,10 +25,19 @@ import Layout from "@/pages/layout"
 import DirectoryLayout from "@/pages/directory-layout"
 import { ErrorPage } from "./pages/error"
 import { Suspense } from "solid-js"
+import { I18nProvider, useI18n } from "@/i18n"
 
 const Home = lazy(() => import("@/pages/home"))
 const Session = lazy(() => import("@/pages/session"))
-const Loading = () => <div class="size-full flex items-center justify-center text-text-weak">Loading...</div>
+const Loading = () => {
+  const { t } = useI18n()
+  return (
+    <div class="size-full flex flex-col items-center justify-center bg-background-base">
+      <Logo class="w-xl opacity-12 animate-pulse" />
+      <div class="mt-8 text-14-regular text-text-weak">{t("common.loading")}</div>
+    </div>
+  )
+}
 
 declare global {
   interface Window {
@@ -112,15 +121,17 @@ export function AppBaseProviders(props: ParentProps) {
     <MetaProvider>
       <Font />
       <ThemeProvider>
-        <ErrorBoundary fallback={(error) => <ErrorPage error={error} />}>
-          <DialogProvider>
-            <MarkedProvider>
-              <DiffComponentProvider component={Diff}>
-                <CodeComponentProvider component={Code}>{props.children}</CodeComponentProvider>
-              </DiffComponentProvider>
-            </MarkedProvider>
-          </DialogProvider>
-        </ErrorBoundary>
+        <I18nProvider>
+          <ErrorBoundary fallback={(error) => <ErrorPage error={error} />}>
+            <DialogProvider>
+              <MarkedProvider>
+                <DiffComponentProvider component={Diff}>
+                  <CodeComponentProvider component={Code}>{props.children}</CodeComponentProvider>
+                </DiffComponentProvider>
+              </MarkedProvider>
+            </DialogProvider>
+          </ErrorBoundary>
+        </I18nProvider>
       </ThemeProvider>
     </MetaProvider>
   )
@@ -128,6 +139,7 @@ export function AppBaseProviders(props: ParentProps) {
 
 function ServerKey(props: ParentProps) {
   const server = useServer()
+  const { t } = useI18n()
 
   // Log state changes for debugging
   console.log("[ServerKey] Rendering - url:", server.url, "ready:", server.ready(), "healthy:", server.healthy())
@@ -138,11 +150,12 @@ function ServerKey(props: ParentProps) {
       keyed
       fallback={
         <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base text-text-weak">
-          <div class="text-16-medium mb-4">Waiting for server URL...</div>
+          <Logo class="w-xl opacity-12 animate-pulse" />
+          <div class="text-16-medium mb-4 mt-8">{t("server.waitingForServerUrl")}</div>
           <div class="text-12-regular opacity-60 space-y-1">
-            <div>URL: {server.url || "none"}</div>
-            <div>Ready: {String(server.ready())}</div>
-            <div>Check console for details</div>
+            <div>{t("server.url")}: {server.url || "none"}</div>
+            <div>{t("server.ready")}: {String(server.ready())}</div>
+            <div>{t("server.checkConsoleForDetails")}</div>
           </div>
         </div>
       }

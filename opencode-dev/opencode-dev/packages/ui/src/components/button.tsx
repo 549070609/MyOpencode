@@ -4,10 +4,11 @@ import { Icon, IconProps } from "./icon"
 
 export interface ButtonProps
   extends ComponentProps<typeof Kobalte>,
-    Pick<ComponentProps<"button">, "class" | "classList" | "children"> {
+    Partial<Pick<ComponentProps<"button">, "class" | "classList" | "children">> {
   size?: "small" | "normal" | "large"
   variant?: "primary" | "secondary" | "ghost"
   icon?: IconProps["name"]
+  type?: "button" | "submit" | "reset"
 }
 
 export function Button(props: ButtonProps) {

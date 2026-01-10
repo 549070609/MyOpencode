@@ -5,7 +5,9 @@ use cli::{get_sidecar_path, install_cli, sync_cli};
 use futures::FutureExt;
 use std::{
     collections::VecDeque,
+    fs,
     net::{SocketAddr, TcpListener},
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -125,6 +127,72 @@ fn get_sidecar_port() -> u32 {
 
 fn get_user_shell() -> String {
     std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
+}
+
+/// Setup oh-my-opencode plugin by ensuring the plugin is in the user's config.
+/// This function merges the default config with existing user config if present.
+fn setup_oh_my_opencode(_app: &AppHandle) {
+    // Get user's opencode config directory
+    // OpenCode uses ~/.config/opencode on all platforms
+    let config_dir = dirs::home_dir().map(|p| p.join(".config").join("opencode"));
+    
+    let Some(config_dir) = config_dir else {
+        println!("[oh-my-opencode] Could not determine config directory");
+        return;
+    };
+    
+    // Create config directory if it doesn't exist
+    if let Err(e) = fs::create_dir_all(&config_dir) {
+        println!("[oh-my-opencode] Failed to create config directory: {}", e);
+        return;
+    }
+    
+    let config_file = config_dir.join("opencode.json");
+    
+    // Check if config file exists
+    if config_file.exists() {
+        // Read existing config and check if oh-my-opencode is already present
+        if let Ok(content) = fs::read_to_string(&config_file) {
+            if content.contains("oh-my-opencode") {
+                println!("[oh-my-opencode] Plugin already configured");
+                return;
+            }
+            
+            // Try to add oh-my-opencode to existing config
+            if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(obj) = config.as_object_mut() {
+                    // Get or create plugin array
+                    let plugins = obj.entry("plugin").or_insert(serde_json::json!([]));
+                    if let Some(arr) = plugins.as_array_mut() {
+                        arr.push(serde_json::json!("oh-my-opencode"));
+                        
+                        // Write back
+                        if let Ok(new_content) = serde_json::to_string_pretty(&config) {
+                            if let Err(e) = fs::write(&config_file, new_content) {
+                                println!("[oh-my-opencode] Failed to update config: {}", e);
+                            } else {
+                                println!("[oh-my-opencode] Added plugin to existing config");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Create new config with oh-my-opencode
+        let default_config = serde_json::json!({
+            "$schema": "https://opencode.ai/config.json",
+            "plugin": ["oh-my-opencode"]
+        });
+        
+        if let Ok(content) = serde_json::to_string_pretty(&default_config) {
+            if let Err(e) = fs::write(&config_file, content) {
+                println!("[oh-my-opencode] Failed to create config: {}", e);
+            } else {
+                println!("[oh-my-opencode] Created config with plugin enabled");
+            }
+        }
+    }
 }
 
 fn spawn_sidecar(app: &AppHandle, port: u32) -> CommandChild {
@@ -275,6 +343,9 @@ pub fn run() {
             // Initialize log state
             app.manage(LogState(Arc::new(Mutex::new(VecDeque::new()))));
 
+            // Setup oh-my-opencode plugin
+            setup_oh_my_opencode(&app);
+
             // Get port and create window immediately for faster perceived startup
             let port = get_sidecar_port();
 
@@ -308,12 +379,8 @@ pub fn run() {
 
             let window = window_builder.build().expect("Failed to create window");
             
-            // Open devtools for debugging
+            // Open devtools only in debug builds
             #[cfg(debug_assertions)]
-            window.open_devtools();
-            
-            // Also open in release builds for troubleshooting
-            #[cfg(not(debug_assertions))]
             window.open_devtools();
 
             let (tx, rx) = tokio::sync::oneshot::channel();

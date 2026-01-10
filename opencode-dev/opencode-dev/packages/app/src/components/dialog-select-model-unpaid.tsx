@@ -10,11 +10,13 @@ import { useLocal } from "@/context/local"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { DialogSelectProvider } from "./dialog-select-provider"
+import { useI18n } from "@/i18n"
 
 export const DialogSelectModelUnpaid: Component = () => {
   const local = useLocal()
   const dialog = useDialog()
   const providers = useProviders()
+  const { t } = useI18n()
 
   let listRef: ListRef | undefined
   const handleKey = (e: KeyboardEvent) => {
@@ -30,9 +32,9 @@ export const DialogSelectModelUnpaid: Component = () => {
   })
 
   return (
-    <Dialog title="Select model">
+    <Dialog title={t("model.selectModel")}>
       <div class="flex flex-col gap-3 px-2.5">
-        <div class="text-14-medium text-text-base px-2.5">Free models provided by OpenCode</div>
+        <div class="text-14-medium text-text-base px-2.5">{t("provider.freeModelsFromOpenCode")}</div>
         <List
           ref={(ref) => (listRef = ref)}
           items={local.model.list}
@@ -48,9 +50,9 @@ export const DialogSelectModelUnpaid: Component = () => {
           {(i) => (
             <div class="w-full flex items-center gap-x-2.5">
               <span>{i.name}</span>
-              <Tag>Free</Tag>
+              <Tag>{t("model.free")}</Tag>
               <Show when={i.latest}>
-                <Tag>Latest</Tag>
+                <Tag>{t("model.latest")}</Tag>
               </Show>
             </div>
           )}
@@ -61,7 +63,7 @@ export const DialogSelectModelUnpaid: Component = () => {
       <div class="px-1.5 pb-1.5">
         <div class="w-full rounded-sm border border-border-weak-base bg-surface-raised-base">
           <div class="w-full flex flex-col items-start gap-4 px-1.5 pt-4 pb-4">
-            <div class="px-2 text-14-medium text-text-base">Add more models from popular providers</div>
+            <div class="px-2 text-14-medium text-text-base">{t("provider.addMoreModels")}</div>
             <div class="w-full">
               <List
                 class="w-full px-0"
@@ -83,10 +85,10 @@ export const DialogSelectModelUnpaid: Component = () => {
                     <ProviderIcon data-slot="list-item-extra-icon" id={i.id as IconName} />
                     <span>{i.name}</span>
                     <Show when={i.id === "opencode"}>
-                      <Tag>Recommended</Tag>
+                      <Tag>{t("provider.recommended")}</Tag>
                     </Show>
                     <Show when={i.id === "anthropic"}>
-                      <div class="text-14-regular text-text-weak">Connect with Claude Pro/Max or API key</div>
+                      <div class="text-14-regular text-text-weak">{t("provider.connectWithClaudeOrApi")}</div>
                     </Show>
                   </div>
                 )}
@@ -99,7 +101,7 @@ export const DialogSelectModelUnpaid: Component = () => {
                   dialog.show(() => <DialogSelectProvider />)
                 }}
               >
-                View all providers
+                {t("provider.viewAllProviders")}
               </Button>
             </div>
           </div>

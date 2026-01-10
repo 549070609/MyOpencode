@@ -271,7 +271,7 @@ export function Session() {
 
   const command = useCommandDialog()
   command.register(() => [
-    ...(sync.data.config.share !== "disabled"
+    ...(sync.data.config.share !== "disabled" && !!sync.data.config.enterprise?.url
       ? [
           {
             title: "分享会话",

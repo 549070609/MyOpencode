@@ -28,6 +28,7 @@ import { Logo } from "@opencode-ai/ui/logo"
 import { batch, createContext, useContext, onCleanup, onMount, type ParentProps, Switch, Match } from "solid-js"
 import { showToast } from "@opencode-ai/ui/toast"
 import { getFilename } from "@opencode-ai/util/path"
+import { useI18n } from "@/i18n"
 
 type State = {
   status: "loading" | "partial" | "complete"
@@ -161,118 +162,176 @@ function createGlobalSync() {
 
     console.log("[bootstrapInstance] SDK created with baseUrl:", globalSDK.url)
 
-    const INSTANCE_REQUEST_TIMEOUT = 10000 // 10 seconds per request
-
-    function withTimeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
-      return Promise.race([
-        promise,
-        new Promise<T>((_, reject) =>
-          setTimeout(() => reject(new Error(`${name} timed out after ${ms}ms`)), ms),
-        ),
-      ])
-    }
-
-    const blockingRequests = {
-      project: async () => {
-        console.log("[bootstrapInstance] Fetching project.current()...")
-        const x = await withTimeout(sdk.project.current(), INSTANCE_REQUEST_TIMEOUT, "project.current()")
-        console.log("[bootstrapInstance] project.current() success:", x.data?.id)
-        setStore("project", x.data!.id)
-      },
-      provider: async () => {
-        console.log("[bootstrapInstance] Fetching provider.list()...")
-        const x = await withTimeout(sdk.provider.list(), INSTANCE_REQUEST_TIMEOUT, "provider.list()")
-        console.log("[bootstrapInstance] provider.list() success, providers:", x.data?.all?.length)
-        const data = x.data!
-        setStore("provider", {
-          ...data,
-          all: data.all.map((provider) => ({
-            ...provider,
-            models: Object.fromEntries(
-              Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated"),
+    // Helper function for retrying SDK calls with exponential backoff
+    async function withRetry<T>(
+      fn: () => Promise<T>,
+      name: string,
+      maxRetries = 5,
+      timeout = 15000
+    ): Promise<T> {
+      let lastError: unknown
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[bootstrapInstance] Fetching ${name} (attempt ${attempt}/${maxRetries})...`)
+          const result = await Promise.race([
+            fn(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`${name} timed out after ${timeout}ms`)), timeout)
             ),
-          })),
-        })
-      },
-      agent: async () => {
-        console.log("[bootstrapInstance] Fetching app.agents()...")
-        const x = await withTimeout(sdk.app.agents(), INSTANCE_REQUEST_TIMEOUT, "app.agents()")
-        console.log("[bootstrapInstance] app.agents() success, agents:", x.data?.length)
-        setStore("agent", x.data ?? [])
-      },
-      config: async () => {
-        console.log("[bootstrapInstance] Fetching config.get()...")
-        const x = await withTimeout(sdk.config.get(), INSTANCE_REQUEST_TIMEOUT, "config.get()")
-        console.log("[bootstrapInstance] config.get() success")
-        setStore("config", x.data!)
-      },
+          ])
+          console.log(`[bootstrapInstance] ${name} success`)
+          return result
+        } catch (e) {
+          lastError = e
+          console.log(`[bootstrapInstance] ${name} failed (attempt ${attempt}/${maxRetries}):`, e)
+          
+          if (attempt < maxRetries) {
+            const delay = Math.min(500 * Math.pow(2, attempt - 1), 5000)
+            console.log(`[bootstrapInstance] Retrying ${name} after ${delay}ms...`)
+            await new Promise((r) => setTimeout(r, delay))
+          }
+        }
+      }
+      throw lastError
     }
 
-    console.log("[bootstrapInstance] Starting blocking requests...")
-    await Promise.all(
-      Object.entries(blockingRequests).map(([name, p]) =>
-        retry(p).catch((e) => {
-          console.error(`[bootstrapInstance] ${name} failed:`, e)
-          setGlobalStore("error", e)
-        }),
-      ),
-    )
-      .then(() => {
-        console.log("[bootstrapInstance] Blocking requests complete, status:", store.status)
-        if (store.status !== "complete") setStore("status", "partial")
-        console.log("[bootstrapInstance] Starting non-blocking requests...")
-        // non-blocking
-        Promise.all([
-          sdk.path.get().then((x) => { console.log("[bootstrapInstance] path.get() done"); setStore("path", x.data!) }),
-          sdk.command.list().then((x) => { console.log("[bootstrapInstance] command.list() done"); setStore("command", x.data ?? []) }),
-          sdk.session.status().then((x) => { console.log("[bootstrapInstance] session.status() done"); setStore("session_status", x.data!) }),
-          loadSessions(directory),
-          sdk.mcp.status().then((x) => { console.log("[bootstrapInstance] mcp.status() done"); setStore("mcp", x.data!) }),
-          sdk.lsp.status().then((x) => { console.log("[bootstrapInstance] lsp.status() done"); setStore("lsp", x.data!) }),
-          sdk.vcs.get().then((x) => { console.log("[bootstrapInstance] vcs.get() done"); setStore("vcs", x.data) }),
-          sdk.permission.list().then((x) => {
-            const grouped: Record<string, PermissionRequest[]> = {}
-            for (const perm of x.data ?? []) {
-              if (!perm?.id || !perm.sessionID) continue
-              const existing = grouped[perm.sessionID]
-              if (existing) {
-                existing.push(perm)
-                continue
-              }
-              grouped[perm.sessionID] = [perm]
-            }
+    console.log("[bootstrapInstance] Starting blocking requests (sequentially)...")
+    
+    // Execute blocking requests sequentially to avoid parallel request issues in Tauri webview
+    let hasError = false
+    
+    // project.current
+    try {
+      const x = await withRetry(() => sdk.project.current(), "project.current()")
+      setStore("project", x.data!.id)
+    } catch (e) {
+      console.error("[bootstrapInstance] project.current() failed:", e)
+      hasError = true
+    }
+    
+    // provider.list
+    try {
+      const x = await withRetry(() => sdk.provider.list(), "provider.list()")
+      const data = x.data!
+      setStore("provider", {
+        ...data,
+        all: data.all.map((provider) => ({
+          ...provider,
+          models: Object.fromEntries(
+            Object.entries(provider.models).filter(([, info]) => info.status !== "deprecated"),
+          ),
+        })),
+      })
+    } catch (e) {
+      console.error("[bootstrapInstance] provider.list() failed:", e)
+      hasError = true
+    }
+    
+    // app.agents
+    try {
+      const x = await withRetry(() => sdk.app.agents(), "app.agents()")
+      setStore("agent", x.data ?? [])
+    } catch (e) {
+      console.error("[bootstrapInstance] app.agents() failed:", e)
+      hasError = true
+    }
+    
+    // config.get
+    try {
+      const x = await withRetry(() => sdk.config.get(), "config.get()")
+      setStore("config", x.data!)
+    } catch (e) {
+      console.error("[bootstrapInstance] config.get() failed:", e)
+      hasError = true
+    }
 
-            batch(() => {
-              for (const sessionID of Object.keys(store.permission)) {
-                if (grouped[sessionID]) continue
-                setStore("permission", sessionID, [])
-              }
-              for (const [sessionID, permissions] of Object.entries(grouped)) {
-                setStore(
-                  "permission",
-                  sessionID,
-                  reconcile(
-                    permissions
-                      .filter((p) => !!p?.id)
-                      .slice()
-                      .sort((a, b) => a.id.localeCompare(b.id)),
-                    { key: "id" },
-                  ),
-                )
-              }
-            })
-          }),
-        ]).then(() => {
-          console.log("[bootstrapInstance] All non-blocking requests complete, setting status to complete")
-          setStore("status", "complete")
-        }).catch((e) => {
-          console.error("[bootstrapInstance] Non-blocking requests failed:", e)
+    console.log("[bootstrapInstance] Blocking requests complete, hasError:", hasError, "status:", store.status)
+    if (store.status !== "complete") setStore("status", "partial")
+    
+    console.log("[bootstrapInstance] Starting non-blocking requests (sequentially)...")
+    
+    // Execute non-blocking requests sequentially too
+    const nonBlockingTasks = [
+      async () => {
+        const x = await sdk.path.get()
+        console.log("[bootstrapInstance] path.get() done")
+        setStore("path", x.data!)
+      },
+      async () => {
+        const x = await sdk.command.list()
+        console.log("[bootstrapInstance] command.list() done")
+        setStore("command", x.data ?? [])
+      },
+      async () => {
+        const x = await sdk.session.status()
+        console.log("[bootstrapInstance] session.status() done")
+        setStore("session_status", x.data!)
+      },
+      async () => {
+        await loadSessions(directory)
+        console.log("[bootstrapInstance] loadSessions() done")
+      },
+      async () => {
+        const x = await sdk.mcp.status()
+        console.log("[bootstrapInstance] mcp.status() done")
+        setStore("mcp", x.data!)
+      },
+      async () => {
+        const x = await sdk.lsp.status()
+        console.log("[bootstrapInstance] lsp.status() done")
+        setStore("lsp", x.data!)
+      },
+      async () => {
+        const x = await sdk.vcs.get()
+        console.log("[bootstrapInstance] vcs.get() done")
+        setStore("vcs", x.data)
+      },
+      async () => {
+        const x = await sdk.permission.list()
+        const grouped: Record<string, PermissionRequest[]> = {}
+        for (const perm of x.data ?? []) {
+          if (!perm?.id || !perm.sessionID) continue
+          const existing = grouped[perm.sessionID]
+          if (existing) {
+            existing.push(perm)
+            continue
+          }
+          grouped[perm.sessionID] = [perm]
+        }
+
+        batch(() => {
+          for (const sessionID of Object.keys(store.permission)) {
+            if (grouped[sessionID]) continue
+            setStore("permission", sessionID, [])
+          }
+          for (const [sessionID, permissions] of Object.entries(grouped)) {
+            setStore(
+              "permission",
+              sessionID,
+              reconcile(
+                permissions
+                  .filter((p) => !!p?.id)
+                  .slice()
+                  .sort((a, b) => a.id.localeCompare(b.id)),
+                { key: "id" },
+              ),
+            )
+          }
         })
-      })
-      .catch((e) => {
-        console.error("[bootstrapInstance] Blocking requests failed:", e)
-        setGlobalStore("error", e)
-      })
+        console.log("[bootstrapInstance] permission.list() done")
+      },
+    ]
+
+    for (const task of nonBlockingTasks) {
+      try {
+        await task()
+      } catch (e) {
+        console.error("[bootstrapInstance] Non-blocking task failed:", e)
+      }
+    }
+    
+    console.log("[bootstrapInstance] All requests complete, setting status to complete")
+    setStore("status", "complete")
   }
 
   const unsub = globalSDK.event.listen((e) => {
@@ -541,35 +600,65 @@ function createGlobalSync() {
 
     console.log("[bootstrap] Starting data fetch...")
 
-    // Helper to fetch with timeout using platform.fetch
-    const fetchWithTimeout = async (endpoint: string, timeout = 10000) => {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), timeout)
-      try {
-        const response = await fetchFn(`${globalSDK.url}${endpoint}`, {
-          signal: controller.signal,
-        })
-        clearTimeout(timeoutId)
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        return await response.json()
-      } catch (e) {
-        clearTimeout(timeoutId)
-        throw e
+    // Small delay to let other initialization tasks complete (Storage, etc.)
+    await new Promise((r) => setTimeout(r, 100))
+
+    // Helper to fetch with timeout and retry for all errors
+    const fetchWithRetry = async (endpoint: string, maxRetries = 5, timeout = 15000) => {
+      let lastError: unknown
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => {
+          console.log(`[bootstrap] Request to ${endpoint} timeout after ${timeout}ms, aborting...`)
+          controller.abort()
+        }, timeout)
+        try {
+          console.log(`[bootstrap] Fetching ${endpoint} (attempt ${attempt}/${maxRetries})...`)
+          const response = await fetchFn(`${globalSDK.url}${endpoint}`, {
+            signal: controller.signal,
+          })
+          clearTimeout(timeoutId)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const data = await response.json()
+          console.log(`[bootstrap] ${endpoint} success`)
+          return data
+        } catch (e) {
+          clearTimeout(timeoutId)
+          lastError = e
+          console.log(`[bootstrap] Fetch ${endpoint} failed (attempt ${attempt}/${maxRetries}):`, e)
+          
+          // Retry all errors with exponential backoff
+          if (attempt < maxRetries) {
+            const delay = Math.min(500 * Math.pow(2, attempt - 1), 5000) // 500ms, 1s, 2s, 4s, 5s
+            console.log(`[bootstrap] Retrying ${endpoint} after ${delay}ms...`)
+            await new Promise((r) => setTimeout(r, delay))
+            continue
+          }
+        }
       }
+      throw lastError
     }
 
-    // Use Promise.allSettled to continue even if some requests fail
-    const results = await Promise.allSettled([
-      (async () => {
+    // Fetch sequentially to avoid potential issues with parallel requests in Tauri webview on Windows
+    // This is more reliable than parallel requests which can cause AbortError in some environments
+    const fetchSequentially = async () => {
+      const errors: Array<{ name: string; error: unknown }> = []
+      
+      // Critical: path - use longer timeout and more retries for first request
+      try {
         console.log("[bootstrap] Fetching path...")
-        const data = await fetchWithTimeout("/path")
+        const data = await fetchWithRetry("/path", 5, 20000) // 5 retries, 20s timeout
         console.log("[bootstrap] path.get() success")
         setGlobalStore("path", data)
-        return "path"
-      })(),
-      (async () => {
+      } catch (e) {
+        console.error("[bootstrap] path.get() failed:", e)
+        errors.push({ name: "path", error: e })
+      }
+      
+      // Non-critical: project
+      try {
         console.log("[bootstrap] Fetching projects...")
-        const data = await fetchWithTimeout("/project")
+        const data = await fetchWithRetry("/project")
         console.log("[bootstrap] project.list() success, count:", data?.length)
         const projects = (data ?? [])
           .filter((p: any) => !!p?.id)
@@ -577,11 +666,15 @@ function createGlobalSync() {
           .slice()
           .sort((a: any, b: any) => a.id.localeCompare(b.id))
         setGlobalStore("project", projects)
-        return "project"
-      })(),
-      (async () => {
+      } catch (e) {
+        console.error("[bootstrap] project.list() failed:", e)
+        errors.push({ name: "project", error: e })
+      }
+      
+      // Non-critical: provider
+      try {
         console.log("[bootstrap] Fetching providers...")
-        const data = await fetchWithTimeout("/provider")
+        const data = await fetchWithRetry("/provider")
         console.log("[bootstrap] provider.list() success")
         setGlobalStore("provider", {
           ...data,
@@ -592,16 +685,34 @@ function createGlobalSync() {
             ),
           })),
         })
-        return "provider"
-      })(),
-      (async () => {
+      } catch (e) {
+        console.error("[bootstrap] provider.list() failed:", e)
+        errors.push({ name: "provider", error: e })
+      }
+      
+      // Non-critical: provider auth
+      try {
         console.log("[bootstrap] Fetching provider auth...")
-        const data = await fetchWithTimeout("/provider/auth")
+        const data = await fetchWithRetry("/provider/auth")
         console.log("[bootstrap] provider.auth() success")
         setGlobalStore("provider_auth", data ?? {})
-        return "provider_auth"
-      })(),
-    ])
+      } catch (e) {
+        console.error("[bootstrap] provider.auth() failed:", e)
+        errors.push({ name: "provider_auth", error: e })
+      }
+      
+      return errors
+    }
+
+    const errors = await fetchSequentially()
+    
+    // Map errors to results format for compatibility
+    const results = [
+      errors.find((e) => e.name === "path") ? { status: "rejected" as const, reason: errors.find((e) => e.name === "path")!.error } : { status: "fulfilled" as const, value: "path" },
+      errors.find((e) => e.name === "project") ? { status: "rejected" as const, reason: errors.find((e) => e.name === "project")!.error } : { status: "fulfilled" as const, value: "project" },
+      errors.find((e) => e.name === "provider") ? { status: "rejected" as const, reason: errors.find((e) => e.name === "provider")!.error } : { status: "fulfilled" as const, value: "provider" },
+      errors.find((e) => e.name === "provider_auth") ? { status: "rejected" as const, reason: errors.find((e) => e.name === "provider_auth")!.error } : { status: "fulfilled" as const, value: "provider_auth" },
+    ]
 
     // Log results
     const fulfilled = results.filter((r) => r.status === "fulfilled")
@@ -665,6 +776,7 @@ const GlobalSyncContext = createContext<ReturnType<typeof createGlobalSync>>()
 
 export function GlobalSyncProvider(props: ParentProps) {
   const value = createGlobalSync()
+  const { t } = useI18n()
 
   // Debug logging
   console.log("[GlobalSyncProvider] Rendering - ready:", value.ready, "error:", value.error)
@@ -674,9 +786,9 @@ export function GlobalSyncProvider(props: ParentProps) {
       fallback={
         <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
           <Logo class="w-xl opacity-12 animate-pulse" />
-          <div class="mt-8 text-14-regular text-text-weak">Loading...</div>
-          <div class="mt-2 text-12-regular text-text-weakest">Connecting to server...</div>
-          <div class="mt-4 text-10-regular text-text-weakest opacity-50">Check DevTools console for details</div>
+          <div class="mt-8 text-14-regular text-text-weak">{t("common.loading")}</div>
+          <div class="mt-2 text-12-regular text-text-weakest">{t("common.connectingToServer")}</div>
+          <div class="mt-4 text-10-regular text-text-weakest opacity-50">{t("common.checkDevTools")}</div>
         </div>
       }
     >

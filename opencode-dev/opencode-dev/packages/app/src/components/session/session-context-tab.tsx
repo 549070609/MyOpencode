@@ -11,6 +11,7 @@ import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { Code } from "@opencode-ai/ui/code"
 import { Markdown } from "@opencode-ai/ui/markdown"
 import type { AssistantMessage, Message, Part, UserMessage } from "@opencode-ai/sdk/v2/client"
+import { useI18n } from "@/i18n"
 
 interface SessionContextTabProps {
   messages: () => Message[]
@@ -22,6 +23,7 @@ interface SessionContextTabProps {
 export function SessionContextTab(props: SessionContextTabProps) {
   const params = useParams()
   const sync = useSync()
+  const { t } = useI18n()
 
   const ctx = createMemo(() => {
     const last = props.messages().findLast((x) => {
@@ -172,7 +174,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
           return [
             {
               key: "system",
-              label: "System",
+              label: t("context.system"),
               tokens: tokens.system,
               width: pct(tokens.system),
               percent: pctLabel(tokens.system),
@@ -180,7 +182,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
             },
             {
               key: "user",
-              label: "User",
+              label: t("context.user"),
               tokens: tokens.user,
               width: pct(tokens.user),
               percent: pctLabel(tokens.user),
@@ -188,7 +190,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
             },
             {
               key: "assistant",
-              label: "Assistant",
+              label: t("context.assistant"),
               tokens: tokens.assistant,
               width: pct(tokens.assistant),
               percent: pctLabel(tokens.assistant),
@@ -196,7 +198,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
             },
             {
               key: "tool",
-              label: "Tool Calls",
+              label: t("context.toolCalls"),
               tokens: tokens.tool,
               width: pct(tokens.tool),
               percent: pctLabel(tokens.tool),
@@ -204,7 +206,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
             },
             {
               key: "other",
-              label: "Other",
+              label: t("context.other"),
               tokens: tokens.other,
               width: pct(tokens.other),
               percent: pctLabel(tokens.other),
@@ -243,22 +245,22 @@ export function SessionContextTab(props: SessionContextTabProps) {
     const c = ctx()
     const count = counts()
     return [
-      { label: "Session", value: props.info()?.title ?? params.id ?? "—" },
-      { label: "Messages", value: count.all.toLocaleString() },
-      { label: "Provider", value: providerLabel() },
-      { label: "Model", value: modelLabel() },
-      { label: "Context Limit", value: number(c?.limit) },
-      { label: "Total Tokens", value: number(c?.total) },
-      { label: "Usage", value: percent(c?.usage) },
-      { label: "Input Tokens", value: number(c?.input) },
-      { label: "Output Tokens", value: number(c?.output) },
-      { label: "Reasoning Tokens", value: number(c?.reasoning) },
-      { label: "Cache Tokens (read/write)", value: `${number(c?.cacheRead)} / ${number(c?.cacheWrite)}` },
-      { label: "User Messages", value: count.user.toLocaleString() },
-      { label: "Assistant Messages", value: count.assistant.toLocaleString() },
-      { label: "Total Cost", value: cost() },
-      { label: "Session Created", value: time(props.info()?.time.created) },
-      { label: "Last Activity", value: time(c?.message.time.created) },
+      { label: t("context.session"), value: props.info()?.title ?? params.id ?? "—" },
+      { label: t("context.messages"), value: count.all.toLocaleString() },
+      { label: t("context.provider"), value: providerLabel() },
+      { label: t("context.model"), value: modelLabel() },
+      { label: t("context.contextLimit"), value: number(c?.limit) },
+      { label: t("context.totalTokens"), value: number(c?.total) },
+      { label: t("context.usage"), value: percent(c?.usage) },
+      { label: t("context.inputTokens"), value: number(c?.input) },
+      { label: t("context.outputTokens"), value: number(c?.output) },
+      { label: t("context.reasoningTokens"), value: number(c?.reasoning) },
+      { label: t("context.cacheTokens"), value: `${number(c?.cacheRead)} / ${number(c?.cacheWrite)}` },
+      { label: t("context.userMessages"), value: count.user.toLocaleString() },
+      { label: t("context.assistantMessages"), value: count.assistant.toLocaleString() },
+      { label: t("context.totalCost"), value: cost() },
+      { label: t("context.sessionCreated"), value: time(props.info()?.time.created) },
+      { label: t("context.lastActivity"), value: time(c?.message.time.created) },
     ] satisfies { label: string; value: JSX.Element }[]
   })
 
@@ -371,7 +373,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
 
         <Show when={breakdown().length > 0}>
           <div class="flex flex-col gap-2">
-            <div class="text-12-regular text-text-weak">Context Breakdown</div>
+            <div class="text-12-regular text-text-weak">{t("context.contextBreakdown")}</div>
             <div class="h-2 w-full rounded-full bg-surface-base overflow-hidden flex">
               <For each={breakdown()}>
                 {(segment) => (
@@ -405,7 +407,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
         <Show when={systemPrompt()}>
           {(prompt) => (
             <div class="flex flex-col gap-2">
-              <div class="text-12-regular text-text-weak">System Prompt</div>
+              <div class="text-12-regular text-text-weak">{t("context.systemPrompt")}</div>
               <div class="border border-border-base rounded-md bg-surface-base px-3 py-2">
                 <Markdown text={prompt()} class="text-12-regular" />
               </div>
@@ -414,7 +416,7 @@ export function SessionContextTab(props: SessionContextTabProps) {
         </Show>
 
         <div class="flex flex-col gap-2">
-          <div class="text-12-regular text-text-weak">Raw messages</div>
+          <div class="text-12-regular text-text-weak">{t("context.rawMessages")}</div>
           <Accordion multiple>
             <For each={props.messages()}>{(message) => <RawMessage message={message} />}</For>
           </Accordion>

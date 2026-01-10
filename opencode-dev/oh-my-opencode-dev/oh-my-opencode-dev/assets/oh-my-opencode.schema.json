@@ -8,6 +8,14 @@
     "$schema": {
       "type": "string"
     },
+    "language": {
+      "default": "en",
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-CN"
+      ]
+    },
     "disabled_mcps": {
       "type": "array",
       "items": {

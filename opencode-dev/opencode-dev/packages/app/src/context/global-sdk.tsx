@@ -105,11 +105,20 @@ export const { use: useGlobalSDK, provider: GlobalSDKProvider } = createSimpleCo
           await new Promise<void>((resolve) => setTimeout(resolve, 0))
         }
       } catch (err) {
+        // Ignore AbortError - this is expected when component unmounts
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log("[GlobalSDK] Event stream aborted (cleanup)")
+          return
+        }
         console.warn("[GlobalSDK] Event stream error:", err)
       }
     })()
       .finally(stop)
       .catch((err) => {
+        // Ignore AbortError - this is expected when component unmounts
+        if (err instanceof Error && err.name === "AbortError") {
+          return
+        }
         console.warn("[GlobalSDK] Event stream connection failed:", err)
       })
 

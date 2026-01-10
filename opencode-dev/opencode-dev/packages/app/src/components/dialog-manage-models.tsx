@@ -4,14 +4,16 @@ import { Switch } from "@opencode-ai/ui/switch"
 import type { Component } from "solid-js"
 import { useLocal } from "@/context/local"
 import { popularProviders } from "@/hooks/use-providers"
+import { useI18n } from "@/i18n"
 
 export const DialogManageModels: Component = () => {
   const local = useLocal()
+  const { t } = useI18n()
   return (
-    <Dialog title="Manage models" description="Customize which models appear in the model selector.">
+    <Dialog title={t("model.manageModels")} description={t("model.manageModelsDesc")}>
       <List
-        search={{ placeholder: "Search models", autofocus: true }}
-        emptyMessage="No model results"
+        search={{ placeholder: t("model.searchModels"), autofocus: true }}
+        emptyMessage={t("model.noModelResults")}
         key={(x) => `${x?.provider?.id}:${x?.id}`}
         items={local.model.list()}
         filterKeys={["provider.name", "name", "id"]}

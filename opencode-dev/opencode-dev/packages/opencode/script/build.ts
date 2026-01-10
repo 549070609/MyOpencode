@@ -102,7 +102,18 @@ const targets = singleFlag
     })
   : allTargets
 
-await $`rm -rf dist`
+// Clean dist folder - handle Windows file locks gracefully
+if (process.platform === "win32") {
+  // On Windows, use PowerShell to forcefully remove, ignoring locked files
+  try {
+    await $`powershell -Command "Remove-Item -Path dist -Recurse -Force -ErrorAction SilentlyContinue"`
+  } catch {
+    // If it fails, try to remove what we can
+    console.log("Warning: Could not fully clean dist folder (some files may be in use)")
+  }
+} else {
+  await $`rm -rf dist`
+}
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {

@@ -4,6 +4,7 @@ import { createStore } from "solid-js/store"
 import { Icon, type IconProps } from "./icon"
 import { IconButton } from "./icon-button"
 import { TextField } from "./text-field"
+import { useData } from "../context"
 
 export interface ListSearchProps {
   placeholder?: string
@@ -27,6 +28,13 @@ export interface ListRef {
 }
 
 export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) {
+  let t: (key: string) => string = (key) => key
+  try {
+    const data = useData()
+    t = data.t
+  } catch {
+    // Data context not available, use fallback
+  }
   const [scrollRef, setScrollRef] = createSignal<HTMLDivElement | undefined>(undefined)
   const [internalFilter, setInternalFilter] = createSignal("")
   const [store, setStore] = createStore({
@@ -175,7 +183,7 @@ export function List<T>(props: ListProps<T> & { ref?: (ref: ListRef) => void }) 
           fallback={
             <div data-slot="list-empty-state">
               <div data-slot="list-message">
-                {props.emptyMessage ?? (grouped.loading ? "Loading" : "No results")} for{" "}
+                {props.emptyMessage ?? (grouped.loading ? t("status.loading") : t("status.noResults"))} {t("status.for")}{" "}
                 <span data-slot="list-filter">&quot;{filter()}&quot;</span>
               </div>
             </div>

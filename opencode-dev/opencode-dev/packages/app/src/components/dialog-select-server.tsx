@@ -9,6 +9,7 @@ import { normalizeServerUrl, serverDisplayName, useServer } from "@/context/serv
 import { usePlatform } from "@/context/platform"
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client"
 import { useNavigate } from "@solidjs/router"
+import { useI18n } from "@/i18n"
 
 type ServerStatus = { healthy: boolean; version?: string }
 
@@ -29,6 +30,7 @@ export function DialogSelectServer() {
   const dialog = useDialog()
   const server = useServer()
   const platform = usePlatform()
+  const { t } = useI18n()
   const [store, setStore] = createStore({
     url: "",
     adding: false,
@@ -112,7 +114,7 @@ export function DialogSelectServer() {
     setStore("adding", false)
 
     if (!result.healthy) {
-      setStore("error", "Could not connect to server")
+      setStore("error", t("server.couldNotConnect"))
       return
     }
 
@@ -121,11 +123,11 @@ export function DialogSelectServer() {
   }
 
   return (
-    <Dialog title="Servers" description="Switch which OpenCode server this app connects to.">
+    <Dialog title={t("server.servers")} description={t("server.switchServerDesc")}>
       <div class="flex flex-col gap-4 pb-4">
         <List
-          search={{ placeholder: "Search servers", autofocus: true }}
-          emptyMessage="No servers yet"
+          search={{ placeholder: t("server.searchServers"), autofocus: true }}
+          emptyMessage={t("server.noServersYet")}
           items={sortedItems}
           key={(x) => x}
           current={current()}
@@ -154,16 +156,16 @@ export function DialogSelectServer() {
 
         <div class="mt-6 px-3 flex flex-col gap-1.5">
           <div class="px-3">
-            <h3 class="text-14-regular text-text-weak">Add a server</h3>
+            <h3 class="text-14-regular text-text-weak">{t("server.addServer")}</h3>
           </div>
           <form onSubmit={handleSubmit}>
             <div class="flex items-start gap-2">
               <div class="flex-1 min-w-0 h-auto">
                 <TextField
                   type="text"
-                  label="Server URL"
+                  label={t("server.serverUrl")}
                   hideLabel
-                  placeholder="http://localhost:4096"
+                  placeholder={t("server.serverUrlPlaceholder")}
                   value={store.url}
                   onChange={(v) => {
                     setStore("url", v)
@@ -174,7 +176,7 @@ export function DialogSelectServer() {
                 />
               </div>
               <Button type="submit" variant="secondary" icon="plus-small" size="large" disabled={store.adding}>
-                {store.adding ? "Checking..." : "Add"}
+                {store.adding ? t("error.checking") : t("common.add")}
               </Button>
             </div>
           </form>

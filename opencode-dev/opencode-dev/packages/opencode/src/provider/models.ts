@@ -84,8 +84,17 @@ export namespace ModelsDev {
     return JSON.parse(json) as Record<string, Provider>
   }
 
+  /** 检查模型在线更新是否被禁用（离线模式或显式禁用） */
+  function isDisabled() {
+    return Flag.OPENCODE_OFFLINE || Flag.OPENCODE_DISABLE_MODELS_FETCH
+  }
+
   export async function refresh() {
-    if (Flag.OPENCODE_DISABLE_MODELS_FETCH) return
+    // 离线模式或显式禁用时，跳过在线更新
+    if (isDisabled()) {
+      log.info("models fetch disabled (offline mode or OPENCODE_DISABLE_MODELS_FETCH=true)")
+      return
+    }
     const file = Bun.file(filepath)
     log.info("refreshing", {
       file,
@@ -104,4 +113,7 @@ export namespace ModelsDev {
   }
 }
 
-setInterval(() => ModelsDev.refresh(), 60 * 1000 * 60).unref()
+// 仅在非离线模式下启用定时刷新
+if (!Flag.OPENCODE_OFFLINE && !Flag.OPENCODE_DISABLE_MODELS_FETCH) {
+  setInterval(() => ModelsDev.refresh(), 60 * 1000 * 60).unref()
+}

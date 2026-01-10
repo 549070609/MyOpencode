@@ -21,6 +21,7 @@ import { SessionLspIndicator } from "@/components/session-lsp-indicator"
 import { SessionMcpIndicator } from "@/components/session-mcp-indicator"
 import type { Session } from "@opencode-ai/sdk/v2/client"
 import { same } from "@/utils/same"
+import { useI18n } from "@/i18n"
 
 export function SessionHeader() {
   const globalSDK = useGlobalSDK()
@@ -31,6 +32,7 @@ export function SessionHeader() {
   const server = useServer()
   const dialog = useDialog()
   const sync = useSync()
+  const { t } = useI18n()
 
   const projectDirectory = createMemo(() => base64Decode(params.dir ?? ""))
 
@@ -41,7 +43,7 @@ export function SessionHeader() {
     if (!current?.parentID) return undefined
     return sync.data.session.find((s) => s.id === current.parentID)
   })
-  const shareEnabled = createMemo(() => sync.data.config.share !== "disabled")
+  const shareEnabled = createMemo(() => sync.data.config.share !== "disabled" && !!sync.data.config.enterprise?.url)
   const worktrees = createMemo(() => layout.projects.list().map((p) => p.worktree), [], { equals: same })
 
   function navigateToProject(directory: string) {
@@ -93,7 +95,7 @@ export function SessionHeader() {
                   <Select
                     options={sessions()}
                     current={currentSession()}
-                    placeholder="New session"
+                    placeholder={t("session.newSession")}
                     label={(x) => x.title}
                     value={(x) => x.id}
                     onSelect={navigateToSession}
@@ -107,7 +109,7 @@ export function SessionHeader() {
                 <Select
                   options={sessions()}
                   current={parentSession()}
-                  placeholder="Back to parent session"
+                  placeholder={t("session.backToParent")}
                   label={(x) => x.title}
                   value={(x) => x.id}
                   onSelect={(session) => {
@@ -122,7 +124,7 @@ export function SessionHeader() {
                 />
                 <div class="text-text-weaker">/</div>
                 <div class="flex items-center gap-1.5 min-w-0">
-                  <Tooltip value="Back to parent session">
+                  <Tooltip value={t("session.backToParent")}>
                     <button
                       type="button"
                       class="flex items-center justify-center gap-1 p-1 rounded hover:bg-surface-raised-base-hover active:bg-surface-raised-base-active transition-colors flex-shrink-0"
@@ -136,7 +138,7 @@ export function SessionHeader() {
             </Show>
           </div>
           <Show when={currentSession() && !parentSession()}>
-            <TooltipKeybind class="hidden xl:block" title="New session" keybind={command.keybind("session.new")}>
+            <TooltipKeybind class="hidden xl:block" title={t("session.newSession")} keybind={command.keybind("session.new")}>
               <IconButton as={A} href={`/${params.dir}/session`} icon="edit-small-2" variant="ghost" />
             </TooltipKeybind>
           </Show>
@@ -168,7 +170,7 @@ export function SessionHeader() {
             <Show when={currentSession()?.summary?.files}>
               <TooltipKeybind
                 class="hidden md:block shrink-0"
-                title="Toggle review"
+                title={t("session.toggleReview")}
                 keybind={command.keybind("review.toggle")}
               >
                 <Button variant="ghost" class="group/review-toggle size-6 p-0" onClick={layout.review.toggle}>
@@ -194,7 +196,7 @@ export function SessionHeader() {
             </Show>
             <TooltipKeybind
               class="hidden md:block shrink-0"
-              title="Toggle terminal"
+              title={t("session.toggleTerminal")}
               keybind={command.keybind("terminal.toggle")}
             >
               <Button variant="ghost" class="group/terminal-toggle size-6 p-0" onClick={layout.terminal.toggle}>
@@ -220,9 +222,9 @@ export function SessionHeader() {
           </div>
           <Show when={shareEnabled() && currentSession()}>
             <Popover
-              title="Share session"
+              title={t("session.shareSession")}
               trigger={
-                <Tooltip class="shrink-0" value="Share session">
+                <Tooltip class="shrink-0" value={t("session.shareSession")}>
                   <IconButton icon="share" variant="ghost" class="" />
                 </Tooltip>
               }
@@ -248,7 +250,7 @@ export function SessionHeader() {
                 )
                 return (
                   <Show when={url.latest}>
-                    {(shareUrl) => <TextField value={shareUrl()} readOnly copyable class="w-72" />}
+                    {(shareUrl) => <TextField value={shareUrl()} readOnly copyable class="w-72" copiedText={t("tooltip.copied")} copyToClipboardText={t("tooltip.copyToClipboard")} />}
                   </Show>
                 )
               })}

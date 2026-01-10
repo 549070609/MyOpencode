@@ -29,29 +29,31 @@ import { createStore } from "solid-js/store"
 import { DateTime, DurationUnit, Interval } from "luxon"
 import { createAutoScroll } from "../hooks"
 
-function computeStatusFromPart(part: PartType | undefined): string | undefined {
+type TranslateFn = (key: string, values?: Record<string, string | number>) => string
+
+function computeStatusFromPart(part: PartType | undefined, t: TranslateFn): string | undefined {
   if (!part) return undefined
 
   if (part.type === "tool") {
     switch (part.tool) {
       case "task":
-        return "Delegating work"
+        return t("status.delegatingWork")
       case "todowrite":
       case "todoread":
-        return "Planning next steps"
+        return t("status.planningNextSteps")
       case "read":
-        return "Gathering context"
+        return t("status.gatheringContext")
       case "list":
       case "grep":
       case "glob":
-        return "Searching the codebase"
+        return t("status.searchingCodebase")
       case "webfetch":
-        return "Searching the web"
+        return t("status.searchingWeb")
       case "edit":
       case "write":
-        return "Making edits"
+        return t("status.makingEdits")
       case "bash":
-        return "Running commands"
+        return t("status.runningCommands")
       default:
         return undefined
     }
@@ -59,11 +61,11 @@ function computeStatusFromPart(part: PartType | undefined): string | undefined {
   if (part.type === "reasoning") {
     const text = part.text ?? ""
     const match = text.trimStart().match(/^\*\*(.+?)\*\*/)
-    if (match) return `Thinking · ${match[1].trim()}`
-    return "Thinking"
+    if (match) return `${t("status.thinking")} · ${match[1].trim()}`
+    return t("status.thinking")
   }
   if (part.type === "text") {
-    return "Gathering thoughts"
+    return t("status.gatheringThoughts")
   }
   return undefined
 }
@@ -307,12 +309,12 @@ export function SessionTurn(
         const msgParts = data.store.part[msg.id] ?? emptyParts
         for (let pi = msgParts.length - 1; pi >= 0; pi--) {
           const part = msgParts[pi]
-          if (part) return computeStatusFromPart(part)
+          if (part) return computeStatusFromPart(part, data.t)
         }
       }
     }
 
-    return computeStatusFromPart(last)
+    return computeStatusFromPart(last, data.t)
   })
 
   const status = createMemo(() => data.store.session_status[props.sessionID] ?? idle)
@@ -494,13 +496,13 @@ export function SessionTurn(
                                 })()}
                               </span>
                               <span data-slot="session-turn-retry-seconds">
-                                · retrying {store.retrySeconds > 0 ? `in ${store.retrySeconds}s ` : ""}
+                                · {data.t("status.retrying")} {store.retrySeconds > 0 ? data.t("status.retryingIn", { seconds: store.retrySeconds }) + " " : ""}
                               </span>
                               <span data-slot="session-turn-retry-attempt">(#{retry()?.attempt})</span>
                             </Match>
-                            <Match when={working()}>{store.status ?? "Considering next steps"}</Match>
-                            <Match when={props.stepsExpanded}>Hide steps</Match>
-                            <Match when={!props.stepsExpanded}>Show steps</Match>
+                            <Match when={working()}>{store.status ?? data.t("status.consideringNextSteps")}</Match>
+                            <Match when={props.stepsExpanded}>{data.t("status.hideSteps")}</Match>
+                            <Match when={!props.stepsExpanded}>{data.t("status.showSteps")}</Match>
                           </Switch>
                           <span>·</span>
                           <span>{store.duration}</span>
@@ -541,7 +543,7 @@ export function SessionTurn(
                     <Show when={!working() && (response() || hasDiffs())}>
                       <div data-slot="session-turn-summary-section">
                         <div data-slot="session-turn-summary-header">
-                          <h2 data-slot="session-turn-summary-title">Response</h2>
+                          <h2 data-slot="session-turn-summary-title">{data.t("status.response")}</h2>
                           <Markdown data-slot="session-turn-markdown" data-diffs={hasDiffs()} text={response() ?? ""} />
                         </div>
                         <Accordion data-slot="session-turn-accordion" multiple>

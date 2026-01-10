@@ -53,10 +53,12 @@ import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme"
 import { DialogSelectProvider } from "@/components/dialog-select-provider"
 import { DialogEditProject } from "@/components/dialog-edit-project"
 import { DialogSelectServer } from "@/components/dialog-select-server"
+import { DialogSettings } from "@/components/dialog-settings"
 import { useCommand, type CommandOption } from "@/context/command"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { DialogSelectDirectory } from "@/components/dialog-select-directory"
 import { useServer } from "@/context/server"
+import { useI18n } from "@/i18n"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore] = createStore({
@@ -91,6 +93,7 @@ export default function Layout(props: ParentProps) {
   const dialog = useDialog()
   const command = useCommand()
   const theme = useTheme()
+  const { t } = useI18n()
   const availableThemeEntries = createMemo(() => Object.entries(theme.themes()))
   const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
   const colorSchemeLabel: Record<ColorScheme, string> = {
@@ -108,7 +111,7 @@ export default function Layout(props: ParentProps) {
     theme.setTheme(nextThemeId)
     const nextTheme = theme.themes()[nextThemeId]
     showToast({
-      title: "Theme switched",
+      title: t("layout.themeSwitched"),
       description: nextTheme?.name ?? nextThemeId,
     })
   }
@@ -121,7 +124,7 @@ export default function Layout(props: ParentProps) {
     const next = colorSchemeOrder[nextIndex]
     theme.setColorScheme(next)
     showToast({
-      title: "Color scheme",
+      title: t("layout.colorScheme"),
       description: colorSchemeLabel[next],
     })
   }
@@ -137,18 +140,18 @@ export default function Layout(props: ParentProps) {
         toastId = showToast({
           persistent: true,
           icon: "download",
-          title: "Update available",
-          description: `A new version of OpenCode (${version}) is now available to install.`,
+          title: t("layout.updateAvailable"),
+          description: t("layout.newVersionAvailable", { version: version ?? "" }),
           actions: [
             {
-              label: "Install and restart",
+              label: t("common.installAndRestart"),
               onClick: async () => {
                 await platform.update!()
                 await platform.restart!()
               },
             },
             {
-              label: "Not yet",
+              label: t("common.notYet"),
               onClick: "dismiss",
             },
           ],
@@ -176,9 +179,9 @@ export default function Layout(props: ParentProps) {
       const session = store.session.find((s) => s.id === perm.sessionID)
       const sessionKey = `${directory}:${perm.sessionID}`
 
-      const sessionTitle = session?.title ?? "New session"
+      const sessionTitle = session?.title ?? t("session.newSession")
       const projectName = getFilename(directory)
-      const description = `${sessionTitle} in ${projectName} needs permission`
+      const description = t("layout.needsPermission", { session: sessionTitle, project: projectName })
       const href = `/${base64Encode(directory)}/session/${perm.sessionID}`
 
       const now = Date.now()
@@ -186,7 +189,7 @@ export default function Layout(props: ParentProps) {
       if (now - lastAlerted < permissionAlertCooldownMs) return
       alertedAtBySession.set(sessionKey, now)
 
-      void platform.notify("Permission required", description, href)
+      void platform.notify(t("layout.permissionRequired"), description, href)
 
       const currentDir = params.dir ? base64Decode(params.dir) : undefined
       const currentSession = params.id
@@ -201,17 +204,17 @@ export default function Layout(props: ParentProps) {
       const toastId = showToast({
         persistent: true,
         icon: "checklist",
-        title: "Permission required",
+        title: t("layout.permissionRequired"),
         description,
         actions: [
           {
-            label: "Go to session",
+            label: t("session.goToSession"),
             onClick: () => {
               navigate(href)
             },
           },
           {
-            label: "Dismiss",
+            label: t("common.dismiss"),
             onClick: "dismiss",
           },
         ],
@@ -359,48 +362,48 @@ export default function Layout(props: ParentProps) {
     const commands: CommandOption[] = [
       {
         id: "sidebar.toggle",
-        title: "Toggle sidebar",
-        category: "View",
+        title: t("layout.toggleSidebar"),
+        category: t("category.view"),
         keybind: "mod+b",
         onSelect: () => layout.sidebar.toggle(),
       },
       {
         id: "project.open",
-        title: "Open project",
-        category: "Project",
+        title: t("layout.openProject"),
+        category: t("category.project"),
         keybind: "mod+o",
         onSelect: () => chooseProject(),
       },
       {
         id: "provider.connect",
-        title: "Connect provider",
-        category: "Provider",
+        title: t("layout.connectProvider"),
+        category: t("category.provider"),
         onSelect: () => connectProvider(),
       },
       {
         id: "server.switch",
-        title: "Switch server",
-        category: "Server",
+        title: t("layout.switchServer"),
+        category: t("category.server"),
         onSelect: () => openServer(),
       },
       {
         id: "session.previous",
-        title: "Previous session",
-        category: "Session",
+        title: t("layout.previousSession"),
+        category: t("category.session"),
         keybind: "alt+arrowup",
         onSelect: () => navigateSessionByOffset(-1),
       },
       {
         id: "session.next",
-        title: "Next session",
-        category: "Session",
+        title: t("layout.nextSession"),
+        category: t("category.session"),
         keybind: "alt+arrowdown",
         onSelect: () => navigateSessionByOffset(1),
       },
       {
         id: "session.archive",
-        title: "Archive session",
-        category: "Session",
+        title: t("layout.archiveSession"),
+        category: t("category.session"),
         keybind: "mod+shift+backspace",
         disabled: !params.dir || !params.id,
         onSelect: () => {
@@ -410,8 +413,8 @@ export default function Layout(props: ParentProps) {
       },
       {
         id: "theme.cycle",
-        title: "Cycle theme",
-        category: "Theme",
+        title: t("layout.cycleTheme"),
+        category: t("category.theme"),
         keybind: "mod+shift+t",
         onSelect: () => cycleTheme(1),
       },
@@ -420,8 +423,8 @@ export default function Layout(props: ParentProps) {
     for (const [id, definition] of availableThemeEntries()) {
       commands.push({
         id: `theme.set.${id}`,
-        title: `Use theme: ${definition.name ?? id}`,
-        category: "Theme",
+        title: t("theme.useTheme", { name: definition.name ?? id }),
+        category: t("category.theme"),
         onSelect: () => theme.commitPreview(),
         onHighlight: () => {
           theme.previewTheme(id)
@@ -432,8 +435,8 @@ export default function Layout(props: ParentProps) {
 
     commands.push({
       id: "theme.scheme.cycle",
-      title: "Cycle color scheme",
-      category: "Theme",
+      title: t("theme.cycleColorScheme"),
+      category: t("category.theme"),
       keybind: "mod+shift+s",
       onSelect: () => cycleColorScheme(1),
     })
@@ -441,8 +444,8 @@ export default function Layout(props: ParentProps) {
     for (const scheme of colorSchemeOrder) {
       commands.push({
         id: `theme.scheme.${scheme}`,
-        title: `Use color scheme: ${colorSchemeLabel[scheme]}`,
-        category: "Theme",
+        title: t("theme.useColorScheme", { name: colorSchemeLabel[scheme] }),
+        category: t("category.theme"),
         onSelect: () => theme.commitPreview(),
         onHighlight: () => {
           theme.previewColorScheme(scheme)
@@ -502,7 +505,7 @@ export default function Layout(props: ParentProps) {
 
     if (platform.openDirectoryPickerDialog && server.isLocal()) {
       const result = await platform.openDirectoryPickerDialog?.({
-        title: "Open project",
+        title: t("layout.openProject"),
         multiple: true,
       })
       resolve(result)
@@ -723,7 +726,7 @@ export default function Layout(props: ParentProps) {
               </div>
               <Show when={props.session.summary?.files}>
                 <div class="flex justify-between items-center self-stretch">
-                  <span class="text-12-regular text-text-weak">{`${props.session.summary?.files || "No"} file${props.session.summary?.files !== 1 ? "s" : ""} changed`}</span>
+                  <span class="text-12-regular text-text-weak">{props.session.summary?.files !== 1 ? t("layout.filesChangedPlural", { count: props.session.summary?.files || 0 }) : t("layout.filesChanged", { count: props.session.summary?.files || 0 })}</span>
                   <Show when={props.session.summary}>{(summary) => <DiffChanges changes={summary()} />}</Show>
                 </div>
               </Show>
@@ -732,7 +735,7 @@ export default function Layout(props: ParentProps) {
           <div class="hidden group-hover/session:flex group-active/session:flex group-focus-within/session:flex text-text-base gap-1 items-center absolute top-1 right-1">
             <TooltipKeybind
               placement={props.mobile ? "bottom" : "right"}
-              title="Archive session"
+              title={t("layout.archiveSession")}
               keybind={command.keybind("session.archive")}
             >
               <IconButton icon="archive" variant="ghost" onClick={() => archiveSession(props.session)} />
@@ -810,15 +813,15 @@ export default function Layout(props: ParentProps) {
                         <DropdownMenu.Item
                           onSelect={() => dialog.show(() => <DialogEditProject project={props.project} />)}
                         >
-                          <DropdownMenu.ItemLabel>Edit project</DropdownMenu.ItemLabel>
+                          <DropdownMenu.ItemLabel>{t("layout.editProject")}</DropdownMenu.ItemLabel>
                         </DropdownMenu.Item>
                         <DropdownMenu.Item onSelect={() => closeProject(props.project.worktree)}>
-                          <DropdownMenu.ItemLabel>Close project</DropdownMenu.ItemLabel>
+                          <DropdownMenu.ItemLabel>{t("layout.closeProject")}</DropdownMenu.ItemLabel>
                         </DropdownMenu.Item>
                       </DropdownMenu.Content>
                     </DropdownMenu.Portal>
                   </DropdownMenu>
-                  <TooltipKeybind placement="top" title="New session" keybind={command.keybind("session.new")}>
+                  <TooltipKeybind placement="top" title={t("session.newSession")} keybind={command.keybind("session.new")}>
                     <IconButton as={A} href={`${defaultWorktree()}/session`} icon="plus-small" variant="ghost" />
                   </TooltipKeybind>
                 </div>
@@ -842,14 +845,14 @@ export default function Layout(props: ParentProps) {
                     >
                       <div class="flex items-center self-stretch w-full">
                         <div class="flex-1 min-w-0">
-                          <Tooltip placement={props.mobile ? "bottom" : "right"} value="New session">
+                          <Tooltip placement={props.mobile ? "bottom" : "right"} value={t("session.newSession")}>
                             <A
                               href={`${defaultWorktree()}/session`}
                               class="flex flex-col gap-1 min-w-0 text-left w-full focus:outline-none"
                             >
                               <div class="flex items-center self-stretch gap-6 justify-between">
                                 <span class="text-14-regular text-text-strong overflow-hidden text-ellipsis truncate">
-                                  New session
+                                  {t("session.newSession")}
                                 </span>
                               </div>
                             </A>
@@ -866,7 +869,7 @@ export default function Layout(props: ParentProps) {
                         size="large"
                         onClick={loadMoreSessions}
                       >
-                        Load more
+                        {t("common.loadMore")}
                       </Button>
                     </div>
                   </Show>
@@ -919,7 +922,7 @@ export default function Layout(props: ParentProps) {
               <TooltipKeybind
                 class="shrink-0"
                 placement="right"
-                title="Toggle sidebar"
+                title={t("layout.toggleSidebar")}
                 keybind={command.keybind("sidebar.toggle")}
                 inactive={expanded()}
               >
@@ -948,7 +951,7 @@ export default function Layout(props: ParentProps) {
                   </div>
                   <Show when={layout.sidebar.opened()}>
                     <div class="hidden group-hover/sidebar-toggle:block group-active/sidebar-toggle:block text-text-base">
-                      Toggle sidebar
+                      {t("layout.toggleSidebar")}
                     </div>
                   </Show>
                 </Button>
@@ -985,24 +988,24 @@ export default function Layout(props: ParentProps) {
             <Match when={providers.all().length > 0 && !providers.paid().length && expanded()}>
               <div class="rounded-md bg-background-stronger shadow-xs-border-base">
                 <div class="p-3 flex flex-col gap-2">
-                  <div class="text-12-medium text-text-strong">Getting started</div>
-                  <div class="text-text-base">OpenCode includes free models so you can start immediately.</div>
-                  <div class="text-text-base">Connect any provider to use models, inc. Claude, GPT, Gemini etc.</div>
+                  <div class="text-12-medium text-text-strong">{t("layout.gettingStarted")}</div>
+                  <div class="text-text-base">{t("layout.freeModels")}</div>
+                  <div class="text-text-base">{t("layout.connectAnyProvider")}</div>
                 </div>
-                <Tooltip placement="right" value="Connect provider" inactive={expanded()}>
+                <Tooltip placement="right" value={t("layout.connectProvider")} inactive={expanded()}>
                   <Button
                     class="flex w-full text-left justify-start text-12-medium text-text-strong stroke-[1.5px] rounded-lg rounded-t-none shadow-none border-t border-border-weak-base pl-2.25 pb-px"
                     size="large"
                     icon="plus"
                     onClick={connectProvider}
                   >
-                    Connect provider
+                    {t("layout.connectProvider")}
                   </Button>
                 </Tooltip>
               </div>
             </Match>
             <Match when={providers.all().length > 0}>
-              <Tooltip placement="right" value="Connect provider" inactive={expanded()}>
+              <Tooltip placement="right" value={t("layout.connectProvider")} inactive={expanded()}>
                 <Button
                   class="flex w-full text-left justify-start text-text-base stroke-[1.5px] rounded-lg px-2"
                   variant="ghost"
@@ -1010,7 +1013,7 @@ export default function Layout(props: ParentProps) {
                   icon="plus"
                   onClick={connectProvider}
                 >
-                  <Show when={expanded()}>Connect provider</Show>
+                  <Show when={expanded()}>{t("layout.connectProvider")}</Show>
                 </Button>
               </Tooltip>
             </Match>
@@ -1019,7 +1022,7 @@ export default function Layout(props: ParentProps) {
             placement="right"
             value={
               <div class="flex items-center gap-2">
-                <span>Open project</span>
+                <span>{t("layout.openProject")}</span>
                 <Show when={!sidebarProps.mobile}>
                   <span class="text-icon-base text-12-medium">{command.keybind("project.open")}</span>
                 </Show>
@@ -1034,20 +1037,18 @@ export default function Layout(props: ParentProps) {
               icon="folder-add-left"
               onClick={chooseProject}
             >
-              <Show when={expanded()}>Open project</Show>
+              <Show when={expanded()}>{t("layout.openProject")}</Show>
             </Button>
           </Tooltip>
-          <Tooltip placement="right" value="Share feedback" inactive={expanded()}>
+          <Tooltip placement="right" value={t("settings.settings")} inactive={expanded()}>
             <Button
-              as={"a"}
-              href="https://opencode.ai/desktop-feedback"
-              target="_blank"
               class="flex w-full text-left justify-start text-text-base stroke-[1.5px] rounded-lg px-2"
               variant="ghost"
               size="large"
-              icon="bubble-5"
+              icon="settings-gear"
+              onClick={() => dialog.show(() => <DialogSettings />)}
             >
-              <Show when={expanded()}>Share feedback</Show>
+              <Show when={expanded()}>{t("settings.settings")}</Show>
             </Button>
           </Tooltip>
         </div>

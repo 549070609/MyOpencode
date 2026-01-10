@@ -18,6 +18,7 @@ import { SessionTurn } from "@opencode-ai/ui/session-turn"
 import { createAutoScroll } from "@opencode-ai/ui/hooks"
 import { SessionReview } from "@opencode-ai/ui/session-review"
 import { SessionMessageRail } from "@opencode-ai/ui/session-message-rail"
+import { useI18n } from "@/i18n"
 
 import { DragDropProvider, DragDropSensors, DragOverlay, SortableProvider, closestCenter } from "@thisbeyond/solid-dnd"
 import type { DragEvent } from "@thisbeyond/solid-dnd"
@@ -158,6 +159,7 @@ export default function Page() {
   const sdk = useSDK()
   const prompt = usePrompt()
   const permission = usePermission()
+  const { t } = useI18n()
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const tabs = createMemo(() => layout.tabs(sessionKey()))
   const view = createMemo(() => layout.view(sessionKey()))
@@ -343,52 +345,52 @@ export default function Page() {
   command.register(() => [
     {
       id: "session.new",
-      title: "New session",
-      description: "Create a new session",
-      category: "Session",
+      title: t("session.newSession"),
+      description: t("session.createNewSession"),
+      category: t("category.session"),
       keybind: "mod+shift+s",
       slash: "new",
       onSelect: () => navigate(`/${params.dir}/session`),
     },
     {
       id: "file.open",
-      title: "Open file",
-      description: "Search and open a file",
-      category: "File",
+      title: t("session.openFile"),
+      description: t("session.searchAndOpenFile"),
+      category: t("category.file"),
       keybind: "mod+p",
       slash: "open",
       onSelect: () => dialog.show(() => <DialogSelectFile />),
     },
     {
       id: "terminal.toggle",
-      title: "Toggle terminal",
-      description: "Show or hide the terminal",
-      category: "View",
+      title: t("session.toggleTerminal"),
+      description: t("session.showHideTerminal"),
+      category: t("category.view"),
       keybind: "ctrl+`",
       slash: "terminal",
       onSelect: () => layout.terminal.toggle(),
     },
     {
       id: "review.toggle",
-      title: "Toggle review",
-      description: "Show or hide the review panel",
-      category: "View",
+      title: t("session.toggleReview"),
+      description: t("session.showHideReview"),
+      category: t("category.view"),
       keybind: "mod+shift+r",
       onSelect: () => layout.review.toggle(),
     },
     {
       id: "terminal.new",
-      title: "New terminal",
-      description: "Create a new terminal tab",
-      category: "Terminal",
+      title: t("session.newTerminal"),
+      description: t("session.createNewTerminal"),
+      category: t("category.terminal"),
       keybind: "ctrl+shift+`",
       onSelect: () => terminal.new(),
     },
     {
       id: "steps.toggle",
-      title: "Toggle steps",
-      description: "Show or hide steps for the current message",
-      category: "View",
+      title: t("session.toggleSteps"),
+      description: t("session.showHideSteps"),
+      category: t("category.view"),
       keybind: "mod+e",
       slash: "steps",
       disabled: !params.id,
@@ -400,68 +402,68 @@ export default function Page() {
     },
     {
       id: "message.previous",
-      title: "Previous message",
-      description: "Go to the previous user message",
-      category: "Session",
+      title: t("session.previousMessage"),
+      description: t("session.goToPreviousMessage"),
+      category: t("category.session"),
       keybind: "mod+arrowup",
       disabled: !params.id,
       onSelect: () => navigateMessageByOffset(-1),
     },
     {
       id: "message.next",
-      title: "Next message",
-      description: "Go to the next user message",
-      category: "Session",
+      title: t("session.nextMessage"),
+      description: t("session.goToNextMessage"),
+      category: t("category.session"),
       keybind: "mod+arrowdown",
       disabled: !params.id,
       onSelect: () => navigateMessageByOffset(1),
     },
     {
       id: "model.choose",
-      title: "Choose model",
-      description: "Select a different model",
-      category: "Model",
+      title: t("model.chooseModel"),
+      description: t("model.selectDifferentModel"),
+      category: t("category.model"),
       keybind: "mod+'",
       slash: "model",
       onSelect: () => dialog.show(() => <DialogSelectModel />),
     },
     {
       id: "mcp.toggle",
-      title: "Toggle MCPs",
-      description: "Toggle MCPs",
-      category: "MCP",
+      title: t("model.toggleMcps"),
+      description: t("model.toggleMcps"),
+      category: t("category.mcp"),
       keybind: "mod+;",
       slash: "mcp",
       onSelect: () => dialog.show(() => <DialogSelectMcp />),
     },
     {
       id: "agent.cycle",
-      title: "Cycle agent",
-      description: "Switch to the next agent",
-      category: "Agent",
+      title: t("model.cycleAgent"),
+      description: t("model.switchToNextAgent"),
+      category: t("category.agent"),
       keybind: "mod+.",
       slash: "agent",
       onSelect: () => local.agent.move(1),
     },
     {
       id: "agent.cycle.reverse",
-      title: "Cycle agent backwards",
-      description: "Switch to the previous agent",
-      category: "Agent",
+      title: t("model.cycleAgentBackwards"),
+      description: t("model.switchToPreviousAgent"),
+      category: t("category.agent"),
       keybind: "shift+mod+.",
       onSelect: () => local.agent.move(-1),
     },
     {
       id: "model.variant.cycle",
-      title: "Cycle thinking effort",
-      description: "Switch to the next effort level",
-      category: "Model",
+      title: t("model.cycleThinkingEffort"),
+      description: t("model.switchToNextEffort"),
+      category: t("category.model"),
       keybind: "shift+mod+t",
       onSelect: () => {
         local.model.variant.cycle()
         showToast({
-          title: "Thinking effort changed",
-          description: "The thinking effort has been changed to " + (local.model.variant.current() ?? "Default"),
+          title: t("session.thinkingEffortChanged"),
+          description: t("session.thinkingEffortChangedTo", { level: local.model.variant.current() ?? t("session.default") }),
         })
       },
     },
@@ -469,9 +471,9 @@ export default function Page() {
       id: "permissions.autoaccept",
       title:
         params.id && permission.isAutoAccepting(params.id, sdk.directory)
-          ? "Stop auto-accepting edits"
-          : "Auto-accept edits",
-      category: "Permissions",
+          ? t("model.stopAutoAccepting")
+          : t("model.autoAcceptEdits"),
+      category: t("category.permissions"),
       keybind: "mod+shift+a",
       disabled: !params.id || !permission.permissionsEnabled(),
       onSelect: () => {
@@ -480,19 +482,19 @@ export default function Page() {
         permission.toggleAutoAccept(sessionID, sdk.directory)
         showToast({
           title: permission.isAutoAccepting(sessionID, sdk.directory)
-            ? "Auto-accepting edits"
-            : "Stopped auto-accepting edits",
+            ? t("model.autoAcceptingEdits")
+            : t("model.stoppedAutoAccepting"),
           description: permission.isAutoAccepting(sessionID, sdk.directory)
-            ? "Edit and write permissions will be automatically approved"
-            : "Edit and write permissions will require approval",
+            ? t("model.autoApproveDesc")
+            : t("model.requireApprovalDesc"),
         })
       },
     },
     {
       id: "session.undo",
-      title: "Undo",
-      description: "Undo the last message",
-      category: "Session",
+      title: t("common.undo"),
+      description: t("command.undoLastMessage"),
+      category: t("category.session"),
       slash: "undo",
       disabled: !params.id || visibleUserMessages().length === 0,
       onSelect: async () => {
@@ -519,9 +521,9 @@ export default function Page() {
     },
     {
       id: "session.redo",
-      title: "Redo",
-      description: "Redo the last undone message",
-      category: "Session",
+      title: t("common.redo"),
+      description: t("command.redoLastMessage"),
+      category: t("category.session"),
       slash: "redo",
       disabled: !params.id || !info()?.revert?.messageID,
       onSelect: async () => {
@@ -548,9 +550,9 @@ export default function Page() {
     },
     {
       id: "session.compact",
-      title: "Compact session",
-      description: "Summarize the session to reduce context size",
-      category: "Session",
+      title: t("session.compactSession"),
+      description: t("session.summarizeSession"),
+      category: t("category.session"),
       slash: "compact",
       disabled: !params.id || visibleUserMessages().length === 0,
       onSelect: async () => {
@@ -559,8 +561,8 @@ export default function Page() {
         const model = local.model.current()
         if (!model) {
           showToast({
-            title: "No model selected",
-            description: "Connect a provider to summarize this session",
+            title: t("session.noModelSelected"),
+            description: t("session.connectProviderToSummarize"),
           })
           return
         }
@@ -986,7 +988,7 @@ export default function Page() {
                             <DiffChanges changes={diffs()} variant="bars" />
                           </Show>
                           <div class="flex items-center gap-1.5">
-                            <div>Review</div>
+                            <div>{t("session.review")}</div>
                             <Show when={info()?.summary?.files}>
                               <div class="text-12-medium text-text-strong h-4 px-2 flex flex-col items-center justify-center rounded-full bg-surface-base">
                                 {info()?.summary?.files ?? 0}
@@ -1000,7 +1002,7 @@ export default function Page() {
                       <Tabs.Trigger
                         value="context"
                         closeButton={
-                          <Tooltip value="Close tab" placement="bottom">
+                          <Tooltip value={t("session.closeTab")} placement="bottom">
                             <IconButton icon="close" variant="ghost" onClick={() => tabs().close("context")} />
                           </Tooltip>
                         }
@@ -1009,7 +1011,7 @@ export default function Page() {
                       >
                         <div class="flex items-center gap-2">
                           <SessionContextUsage variant="indicator" />
-                          <div>Context</div>
+                          <div>{t("session.context")}</div>
                         </div>
                       </Tabs.Trigger>
                     </Show>
@@ -1018,7 +1020,7 @@ export default function Page() {
                     </SortableProvider>
                     <div class="bg-background-base h-full flex items-center justify-center border-b border-border-weak-base px-3">
                       <TooltipKeybind
-                        title="Open file"
+                        title={t("session.openFile")}
                         keybind={command.keybind("file.open")}
                         class="flex items-center"
                       >
@@ -1217,7 +1219,7 @@ export default function Page() {
                                 }}
                               >
                                 <Icon name="plus-small" size="small" />
-                                <span>Add {selectionLabel()} to context</span>
+                                <span>{t("session.addToContext", { selection: selectionLabel() ?? "" })}</span>
                               </button>
                             </div>
                           )}
@@ -1274,7 +1276,7 @@ export default function Page() {
                             />
                           </Match>
                           <Match when={state()?.loading}>
-                            <div class="px-6 py-4 text-text-weak">Loading...</div>
+                            <div class="px-6 py-4 text-text-weak">{t("common.loading")}</div>
                           </Match>
                           <Match when={state()?.error}>
                             {(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}
@@ -1331,7 +1333,7 @@ export default function Page() {
                 </SortableProvider>
                 <div class="h-full flex items-center justify-center">
                   <TooltipKeybind
-                    title="New terminal"
+                    title={t("session.newTerminal")}
                     keybind={command.keybind("terminal.new")}
                     class="flex items-center"
                   >

@@ -11,6 +11,7 @@ import { makeAudioPlayer } from "@solid-primitives/audio"
 import idleSound from "@opencode-ai/ui/audio/staplebops-01.aac"
 import errorSound from "@opencode-ai/ui/audio/nope-03.aac"
 import { Persist, persisted } from "@/utils/persist"
+import { useI18n } from "@/i18n"
 
 type NotificationBase = {
   directory?: string
@@ -57,6 +58,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     const globalSDK = useGlobalSDK()
     const globalSync = useGlobalSync()
     const platform = usePlatform()
+    const { t } = useI18n()
 
     const [store, setStore, _, ready] = persisted(
       Persist.global("notification", ["notification.v1"]),
@@ -102,7 +104,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
             session: sessionID,
           })
           const href = `/${base64Encode(directory)}/session/${sessionID}`
-          void platform.notify("Response ready", session?.title ?? sessionID, href)
+          void platform.notify(t("notification.responseReady"), session?.title ?? sessionID, href)
           break
         }
         case "session.error": {
@@ -121,9 +123,9 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
             session: sessionID ?? "global",
             error,
           })
-          const description = session?.title ?? (typeof error === "string" ? error : "An error occurred")
+          const description = session?.title ?? (typeof error === "string" ? error : t("notification.errorOccurred"))
           const href = sessionID ? `/${base64Encode(directory)}/session/${sessionID}` : `/${base64Encode(directory)}`
-          void platform.notify("Session error", description, href)
+          void platform.notify(t("notification.sessionError"), description, href)
           break
         }
       }

@@ -3,6 +3,7 @@ import { createSignal, Show, splitProps } from "solid-js"
 import type { ComponentProps } from "solid-js"
 import { IconButton } from "./icon-button"
 import { Tooltip } from "./tooltip"
+import { useData } from "../context"
 
 export interface TextFieldProps
   extends ComponentProps<typeof Kobalte.Input>,
@@ -27,9 +28,22 @@ export interface TextFieldProps
   variant?: "normal" | "ghost"
   copyable?: boolean
   multiline?: boolean
+  copiedText?: string
+  copyToClipboardText?: string
+  class?: string
+  autofocus?: boolean
+  type?: string
+  placeholder?: string
 }
 
 export function TextField(props: TextFieldProps) {
+  let t: (key: string) => string = (key) => key
+  try {
+    const data = useData()
+    t = data.t
+  } catch {
+    // Data context not available
+  }
   const [local, others] = splitProps(props, [
     "name",
     "defaultValue",
@@ -48,6 +62,8 @@ export function TextField(props: TextFieldProps) {
     "variant",
     "copyable",
     "multiline",
+    "copiedText",
+    "copyToClipboardText",
   ])
   const [copied, setCopied] = createSignal(false)
 
@@ -90,7 +106,7 @@ export function TextField(props: TextFieldProps) {
           <Kobalte.TextArea {...others} autoResize data-slot="input-input" class={local.class} />
         </Show>
         <Show when={local.copyable}>
-          <Tooltip value={copied() ? "Copied" : "Copy to clipboard"} placement="top" gutter={8}>
+          <Tooltip value={copied() ? (local.copiedText ?? t("tooltip.copied")) : (local.copyToClipboardText ?? t("tooltip.copyToClipboard"))} placement="top" gutter={8}>
             <IconButton
               type="button"
               icon={copied() ? "check" : "copy"}

@@ -4,10 +4,12 @@ import { useSDK } from "@/context/sdk"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { List } from "@opencode-ai/ui/list"
 import { Switch } from "@opencode-ai/ui/switch"
+import { useI18n } from "@/i18n"
 
 export const DialogSelectMcp: Component = () => {
   const sync = useSync()
   const sdk = useSDK()
+  const { t } = useI18n()
   const [loading, setLoading] = createSignal<string | null>(null)
 
   const items = createMemo(() =>
@@ -34,10 +36,10 @@ export const DialogSelectMcp: Component = () => {
   const totalCount = createMemo(() => items().length)
 
   return (
-    <Dialog title="MCPs" description={`${enabledCount()} of ${totalCount()} enabled`}>
+    <Dialog title={t("mcp.mcps")} description={t("mcp.mcpStatus", { enabled: enabledCount(), total: totalCount() })}>
       <List
-        search={{ placeholder: "Search", autofocus: true }}
-        emptyMessage="No MCPs configured"
+        search={{ placeholder: t("common.search"), autofocus: true }}
+        emptyMessage={t("mcp.noMcpsConfigured")}
         key={(x) => x?.name ?? ""}
         items={items}
         filterKeys={["name", "status"]}

@@ -8,6 +8,7 @@ import { getFilename } from "@opencode-ai/util/path"
 import { useSDK } from "./sdk"
 import { useSync } from "./sync"
 import { Persist, persisted } from "@/utils/persist"
+import { useI18n } from "@/i18n"
 
 export type FileSelection = {
   startLine: number
@@ -88,6 +89,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
     const sdk = useSDK()
     const sync = useSync()
     const params = useParams()
+    const { t } = useI18n()
 
     const directory = createMemo(() => sync.data.path.directory)
 
@@ -222,7 +224,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
           )
           showToast({
             variant: "error",
-            title: "Failed to load file",
+            title: t("file.failedToLoadFile"),
             description: e.message,
           })
         })

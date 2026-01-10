@@ -26,8 +26,15 @@
       "icons/dev/icon.ico"
     ],
     "active": true,
-    "targets": ["nsis"],
-    "externalBin": ["sidecars/opencode-cli"],
+    "targets": [
+      "nsis"
+    ],
+    "externalBin": [
+      "sidecars/opencode-cli"
+    ],
+    "resources": {
+      "resources/*": "./"
+    },
     "macOS": {
       "entitlements": "./entitlements.plist"
     },

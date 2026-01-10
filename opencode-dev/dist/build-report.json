@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-01-10T19:01:42.185949",
+  "version": null,
+  "mode": "release",
+  "results": [
+    {
+      "project": "oh-my-opencode",
+      "success": false,
+      "duration": 37.03886437416077,
+      "output_files": [],
+      "error": "构建失败"
+    },
+    {
+      "project": "opencode-dev",
+      "success": true,
+      "duration": 120.9092583656311,
+      "output_files": [
+        "d:\\localproject\\prototypeDesign\\openCode\\opencode-dev\\opencode-dev\\packages\\plugin\\dist",
+        "d:\\localproject\\prototypeDesign\\openCode\\opencode-dev\\opencode-dev\\packages\\opencode\\dist",
+        "d:\\localproject\\prototypeDesign\\openCode\\opencode-dev\\opencode-dev\\packages\\app\\dist"
+      ],
+      "error": null
+    },
+    {
+      "project": "desktop",
+      "success": true,
+      "duration": 246.21530294418335,
+      "output_files": [
+        "d:\\localproject\\prototypeDesign\\openCode\\opencode-dev\\opencode-dev\\packages\\desktop\\src-tauri\\target\\release\\bundle\\nsis\\OpenCode Dev_1.1.6_x64-setup.exe"
+      ],
+      "error": null
+    }
+  ],
+  "total_duration": 404.1634256839752
+}

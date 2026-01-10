@@ -1,5 +1,5 @@
 import { Dialog as Kobalte } from "@kobalte/core/dialog"
-import { ComponentProps, JSXElement, Match, ParentProps, Show, Switch } from "solid-js"
+import { ComponentProps, JSX, JSXElement, Match, ParentProps, Show, Switch } from "solid-js"
 import { IconButton } from "./icon-button"
 
 export interface DialogProps extends ParentProps {
@@ -8,6 +8,7 @@ export interface DialogProps extends ParentProps {
   action?: JSXElement
   class?: ComponentProps<"div">["class"]
   classList?: ComponentProps<"div">["classList"]
+  children?: JSX.Element
 }
 
 export function Dialog(props: DialogProps) {

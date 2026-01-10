@@ -39,7 +39,7 @@ export interface I18nTranslations {
     }
   }
   cli: {
-    [key: string]: string
+    [key: string]: string | { [key: string]: string }
   }
   hooks: {
     [key: string]: string

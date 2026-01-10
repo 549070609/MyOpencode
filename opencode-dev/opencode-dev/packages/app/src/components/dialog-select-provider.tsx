@@ -7,28 +7,36 @@ import { Tag } from "@opencode-ai/ui/tag"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { IconName } from "@opencode-ai/ui/icons/provider"
 import { DialogConnectProvider } from "./dialog-connect-provider"
+import { useI18n } from "@/i18n"
+
+type ProviderItem = { id: string; name: string }
 
 export const DialogSelectProvider: Component = () => {
   const dialog = useDialog()
   const providers = useProviders()
+  const { t } = useI18n()
+
+  const getGroup = (x: ProviderItem) => {
+    return popularProviders.includes(x.id) ? t("provider.popular") : t("provider.other")
+  }
 
   return (
-    <Dialog title="Connect provider">
-      <List
-        search={{ placeholder: "Search providers", autofocus: true }}
+    <Dialog title={t("provider.connectProvider")}>
+      <List<ProviderItem>
+        search={{ placeholder: t("provider.searchProviders"), autofocus: true }}
         activeIcon="plus-small"
         key={(x) => x?.id}
         items={providers.all}
         filterKeys={["id", "name"]}
-        groupBy={(x) => (popularProviders.includes(x.id) ? "Popular" : "Other")}
+        groupBy={getGroup}
         sortBy={(a, b) => {
           if (popularProviders.includes(a.id) && popularProviders.includes(b.id))
             return popularProviders.indexOf(a.id) - popularProviders.indexOf(b.id)
           return a.name.localeCompare(b.name)
         }}
         sortGroupsBy={(a, b) => {
-          if (a.category === "Popular" && b.category !== "Popular") return -1
-          if (b.category === "Popular" && a.category !== "Popular") return 1
+          if (a.category === t("provider.popular")) return -1
+          if (b.category === t("provider.popular")) return 1
           return 0
         }}
         onSelect={(x) => {
@@ -41,10 +49,10 @@ export const DialogSelectProvider: Component = () => {
             <ProviderIcon data-slot="list-item-extra-icon" id={i.id as IconName} />
             <span>{i.name}</span>
             <Show when={i.id === "opencode"}>
-              <Tag>Recommended</Tag>
+              <Tag>{t("provider.recommended")}</Tag>
             </Show>
             <Show when={i.id === "anthropic"}>
-              <div class="text-14-regular text-text-weak">Connect with Claude Pro/Max or API key</div>
+              <div class="text-14-regular text-text-weak">{t("provider.connectWithClaudeOrApi")}</div>
             </Show>
           </div>
         )}

@@ -6,6 +6,7 @@ import { FileIcon } from "./file-icon"
 import { Icon } from "./icon"
 import { StickyAccordionHeader } from "./sticky-accordion-header"
 import { useDiffComponent } from "../context/diff"
+import { useData } from "../context"
 import { getDirectory, getFilename } from "@opencode-ai/util/path"
 import { For, Match, Show, Switch, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -33,6 +34,13 @@ export interface SessionReviewProps {
 
 export const SessionReview = (props: SessionReviewProps) => {
   const diffComponent = useDiffComponent()
+  let t: (key: string) => string = (key) => key
+  try {
+    const data = useData()
+    t = data.t
+  } catch {
+    // Data context not available
+  }
   const [store, setStore] = createStore({
     open: props.diffs.length > 10 ? [] : props.diffs.map((d) => d.file),
   })
@@ -68,21 +76,21 @@ export const SessionReview = (props: SessionReviewProps) => {
           [props.classes?.header ?? ""]: !!props.classes?.header,
         }}
       >
-        <div data-slot="session-review-title">Session changes</div>
+        <div data-slot="session-review-title">{t("status.sessionChanges")}</div>
         <div data-slot="session-review-actions">
           <Show when={props.onDiffStyleChange}>
             <RadioGroup
               options={["unified", "split"] as const}
               current={diffStyle()}
               value={(style) => style}
-              label={(style) => (style === "unified" ? "Unified" : "Split")}
+              label={(style) => (style === "unified" ? t("status.unified") : t("status.split"))}
               onSelect={(style) => style && props.onDiffStyleChange?.(style)}
             />
           </Show>
           <Button size="normal" icon="chevron-grabber-vertical" onClick={handleExpandOrCollapseAll}>
             <Switch>
-              <Match when={open().length > 0}>Collapse all</Match>
-              <Match when={true}>Expand all</Match>
+              <Match when={open().length > 0}>{t("status.collapseAll")}</Match>
+              <Match when={true}>{t("status.expandAll")}</Match>
             </Switch>
           </Button>
           {props.actions}

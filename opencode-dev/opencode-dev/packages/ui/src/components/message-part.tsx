@@ -59,13 +59,14 @@ function getDiagnostics(
 }
 
 function DiagnosticsDisplay(props: { diagnostics: Diagnostic[] }): JSX.Element {
+  const data = useData()
   return (
     <Show when={props.diagnostics.length > 0}>
       <div data-component="diagnostics">
         <For each={props.diagnostics}>
           {(diagnostic) => (
             <div data-slot="diagnostic">
-              <span data-slot="diagnostic-label">Error</span>
+              <span data-slot="diagnostic-label">{data.t("status.error")}</span>
               <span data-slot="diagnostic-location">
                 [{diagnostic.range.start.line + 1}:{diagnostic.range.start.character + 1}]
               </span>
@@ -170,71 +171,74 @@ export type ToolInfo = {
   subtitle?: string
 }
 
-export function getToolInfo(tool: string, input: any = {}): ToolInfo {
+type TranslateFn = (key: string, values?: Record<string, string | number>) => string
+const defaultT: TranslateFn = (key) => key
+
+export function getToolInfo(tool: string, input: any = {}, t: TranslateFn = defaultT): ToolInfo {
   switch (tool) {
     case "read":
       return {
         icon: "glasses",
-        title: "Read",
+        title: t("tool.read"),
         subtitle: input.filePath ? getFilename(input.filePath) : undefined,
       }
     case "list":
       return {
         icon: "bullet-list",
-        title: "List",
+        title: t("tool.list"),
         subtitle: input.path ? getFilename(input.path) : undefined,
       }
     case "glob":
       return {
         icon: "magnifying-glass-menu",
-        title: "Glob",
+        title: t("tool.glob"),
         subtitle: input.pattern,
       }
     case "grep":
       return {
         icon: "magnifying-glass-menu",
-        title: "Grep",
+        title: t("tool.grep"),
         subtitle: input.pattern,
       }
     case "webfetch":
       return {
         icon: "window-cursor",
-        title: "Webfetch",
+        title: t("tool.fetch"),
         subtitle: input.url,
       }
     case "task":
       return {
         icon: "task",
-        title: `${input.subagent_type || "task"} Agent`,
+        title: `${input.subagent_type || t("tool.task")} ${t("permission.agent")}`,
         subtitle: input.description,
       }
     case "bash":
       return {
         icon: "console",
-        title: "Shell",
+        title: t("tool.shell"),
         subtitle: input.description,
       }
     case "edit":
       return {
         icon: "code-lines",
-        title: "Edit",
+        title: t("tool.edit"),
         subtitle: input.filePath ? getFilename(input.filePath) : undefined,
       }
     case "write":
       return {
         icon: "code-lines",
-        title: "Write",
+        title: t("tool.write"),
         subtitle: input.filePath ? getFilename(input.filePath) : undefined,
       }
     case "todowrite":
       return {
         icon: "checklist",
-        title: "To-dos",
+        title: t("tool.todoWrite"),
       }
     case "todoread":
       return {
         icon: "checklist",
-        title: "Read to-dos",
+        title: t("tool.todoRead"),
       }
     default:
       return {
@@ -542,13 +546,13 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
         <div data-component="permission-prompt">
           <div data-slot="permission-actions">
             <Button variant="ghost" size="small" onClick={() => respond("reject")}>
-              Deny
+              {data.t("permission.deny")}
             </Button>
             <Button variant="secondary" size="small" onClick={() => respond("always")}>
-              Allow always
+              {data.t("permission.allowAlways")}
             </Button>
             <Button variant="primary" size="small" onClick={() => respond("once")}>
-              Allow once
+              {data.t("permission.allowOnce")}
             </Button>
           </div>
         </div>
@@ -589,6 +593,7 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
 ToolRegistry.register({
   name: "read",
   render(props) {
+    const data = useData()
     const args: string[] = []
     if (props.input.offset) args.push("offset=" + props.input.offset)
     if (props.input.limit) args.push("limit=" + props.input.limit)
@@ -597,7 +602,7 @@ ToolRegistry.register({
         {...props}
         icon="glasses"
         trigger={{
-          title: "Read",
+          title: data.t("tool.read"),
           subtitle: props.input.filePath ? getFilename(props.input.filePath) : "",
           args,
         }}
@@ -609,11 +614,12 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "list",
   render(props) {
+    const data = useData()
     return (
       <BasicTool
         {...props}
         icon="bullet-list"
-        trigger={{ title: "List", subtitle: getDirectory(props.input.path || "/") }}
+        trigger={{ title: data.t("tool.list"), subtitle: getDirectory(props.input.path || "/") }}
       >
         <Show when={props.output}>
           {(output) => (
@@ -630,12 +636,13 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "glob",
   render(props) {
+    const data = useData()
     return (
       <BasicTool
         {...props}
         icon="magnifying-glass-menu"
         trigger={{
-          title: "Glob",
+          title: data.t("tool.glob"),
           subtitle: getDirectory(props.input.path || "/"),
           args: props.input.pattern ? ["pattern=" + props.input.pattern] : [],
         }}
@@ -655,6 +662,7 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "grep",
   render(props) {
+    const data = useData()
     const args: string[] = []
     if (props.input.pattern) args.push("pattern=" + props.input.pattern)
     if (props.input.include) args.push("include=" + props.input.include)
@@ -663,7 +671,7 @@ ToolRegistry.register({
         {...props}
         icon="magnifying-glass-menu"
         trigger={{
-          title: "Grep",
+          title: data.t("tool.grep"),
           subtitle: getDirectory(props.input.path || "/"),
           args,
         }}
@@ -683,12 +691,13 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "webfetch",
   render(props) {
+    const data = useData()
     return (
       <BasicTool
         {...props}
         icon="window-cursor"
         trigger={{
-          title: "Webfetch",
+          title: data.t("tool.fetch"),
           subtitle: props.input.url || "",
           args: props.input.format ? ["format=" + props.input.format] : [],
           action: (
@@ -800,7 +809,7 @@ ToolRegistry.register({
                     icon="task"
                     defaultOpen={true}
                     trigger={{
-                      title: `${props.input.subagent_type || props.tool} Agent`,
+                      title: `${props.input.subagent_type || props.tool} ${data.t("permission.agent")}`,
                       titleClass: "capitalize",
                       subtitle: props.input.description,
                     }}
@@ -813,13 +822,13 @@ ToolRegistry.register({
               <div data-component="permission-prompt">
                 <div data-slot="permission-actions">
                   <Button variant="ghost" size="small" onClick={() => respond("reject")}>
-                    Deny
+                    {data.t("permission.deny")}
                   </Button>
                   <Button variant="secondary" size="small" onClick={() => respond("always")}>
-                    Allow always
+                    {data.t("permission.allowAlways")}
                   </Button>
                   <Button variant="primary" size="small" onClick={() => respond("once")}>
-                    Allow once
+                    {data.t("permission.allowOnce")}
                   </Button>
                 </div>
               </div>
@@ -830,7 +839,7 @@ ToolRegistry.register({
               icon="task"
               defaultOpen={true}
               trigger={{
-                title: `${props.input.subagent_type || props.tool} Agent`,
+                title: `${props.input.subagent_type || props.tool} ${data.t("permission.agent")}`,
                 titleClass: "capitalize",
                 subtitle: props.input.description,
               }}
@@ -845,7 +854,7 @@ ToolRegistry.register({
                 <div ref={autoScroll.contentRef} data-component="task-tools">
                   <For each={summary()}>
                     {(item) => {
-                      const info = getToolInfo(item.tool)
+                      const info = getToolInfo(item.tool, {}, data.t)
                       return (
                         <div data-slot="task-tool-item">
                           <Icon name={info.icon} size="small" />
@@ -870,12 +879,13 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "bash",
   render(props) {
+    const data = useData()
     return (
       <BasicTool
         {...props}
         icon="console"
         trigger={{
-          title: "Shell",
+          title: data.t("tool.shell"),
           subtitle: props.input.description,
         }}
       >
@@ -892,6 +902,7 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "edit",
   render(props) {
+    const data = useData()
     const diffComponent = useDiffComponent()
     const diagnostics = createMemo(() => getDiagnostics(props.metadata.diagnostics, props.input.filePath))
     return (
@@ -901,7 +912,7 @@ ToolRegistry.register({
         trigger={
           <div data-component="edit-trigger">
             <div data-slot="message-part-title-area">
-              <div data-slot="message-part-title">Edit</div>
+              <div data-slot="message-part-title">{data.t("tool.edit")}</div>
               <div data-slot="message-part-path">
                 <Show when={props.input.filePath?.includes("/")}>
                   <span data-slot="message-part-directory">{getDirectory(props.input.filePath!)}</span>
@@ -941,6 +952,7 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "write",
   render(props) {
+    const data = useData()
     const codeComponent = useCodeComponent()
     const diagnostics = createMemo(() => getDiagnostics(props.metadata.diagnostics, props.input.filePath))
     return (
@@ -950,7 +962,7 @@ ToolRegistry.register({
         trigger={
           <div data-component="write-trigger">
             <div data-slot="message-part-title-area">
-              <div data-slot="message-part-title">Write</div>
+              <div data-slot="message-part-title">{data.t("tool.write")}</div>
               <div data-slot="message-part-path">
                 <Show when={props.input.filePath?.includes("/")}>
                   <span data-slot="message-part-directory">{getDirectory(props.input.filePath!)}</span>
@@ -984,13 +996,14 @@ ToolRegistry.register({
 ToolRegistry.register({
   name: "todowrite",
   render(props) {
+    const data = useData()
     return (
       <BasicTool
         {...props}
         defaultOpen
         icon="checklist"
         trigger={{
-          title: "To-dos",
+          title: data.t("tool.todoWrite"),
           subtitle: props.input.todos
             ? `${props.input.todos.filter((t: Todo) => t.status === "completed").length}/${props.input.todos.length}`
             : "",

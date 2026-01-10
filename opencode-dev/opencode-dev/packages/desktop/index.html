@@ -43,11 +43,331 @@
         }
       })()
     </script>
+    <script id="oc-browser-mode">
+      // Browser mode detection and mock setup - MUST run before any module imports
+      ;(function() {
+        var isTauri = window.__TAURI_INTERNALS__ || window.__TAURI__;
+        var isBrowserMode = !isTauri;
+        
+        if (isBrowserMode) {
+          console.log("[Browser Mode] Running in browser, setting up mocks...");
+          
+          // Detect OS from user agent
+          var ua = navigator.userAgent;
+          var osType = "linux";
+          var platform = "linux";
+          var family = "unix";
+          var eol = "\n";
+          var exeExtension = "";
+          
+          if (ua.indexOf("Win") !== -1) { 
+            osType = "windows"; 
+            platform = "windows"; 
+            family = "windows";
+            eol = "\r\n";
+            exeExtension = "exe";
+          } else if (ua.indexOf("Mac") !== -1) { 
+            osType = "macos"; 
+            platform = "macos";
+            family = "unix";
+          }
+          
+          // Mock __OPENCODE__ for browser development
+          window.__OPENCODE__ = {
+            port: 59123, // Default opencode server port
+            updaterEnabled: false,
+            serverReady: true, // Tell app server is ready so it renders
+            browserMode: true,
+            backendAvailable: false // Will be updated by health check
+          };
+          
+          // Check if backend server is actually running
+          var serverCheckComplete = false;
+          fetch("http://127.0.0.1:59123/health")
+            .then(function(response) {
+              if (response.ok) {
+                console.log("[Browser Mode] Backend server is running!");
+                window.__OPENCODE__.backendAvailable = true;
+              }
+              serverCheckComplete = true;
+            })
+            .catch(function() {
+              console.log("[Browser Mode] Backend server not running on port 59123");
+              console.log("[Browser Mode] To start the backend, run one of these:");
+              console.log("  - opencode serve --port 59123");
+              console.log("  - python install/dev_browser.py --with-server");
+              serverCheckComplete = true;
+              
+              // Show browser mode banner after a short delay
+              setTimeout(function() {
+                if (!window.__OPENCODE__.backendAvailable) {
+                  showBrowserModeBanner();
+                }
+              }, 2000);
+            });
+          
+          // Function to show browser mode banner
+          function showBrowserModeBanner() {
+            var existing = document.getElementById("browser-mode-banner");
+            if (existing) return;
+            
+            var banner = document.createElement("div");
+            banner.id = "browser-mode-banner";
+            banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#FF6B35,#F7931E);color:white;padding:12px 20px;font-family:system-ui;font-size:14px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.2);";
+            banner.innerHTML = '<div><strong>🌐 Browser Dev Mode</strong> — Backend server not running. UI development only. Run <code style="background:rgba(0,0,0,0.2);padding:2px 6px;border-radius:4px;margin:0 4px;">opencode serve --port 59123</code> for full functionality.</div><button onclick="this.parentElement.remove()" style="background:rgba(255,255,255,0.2);border:none;color:white;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">✕ Dismiss</button>';
+            document.body.insertBefore(banner, document.body.firstChild);
+          }
+          
+          // Mock __TAURI_OS_PLUGIN_INTERNALS__ - used by @tauri-apps/plugin-os
+          window.__TAURI_OS_PLUGIN_INTERNALS__ = {
+            eol: eol,
+            platform: platform,
+            version: "10.0.0",
+            family: family,
+            os_type: osType,
+            arch: "x86_64",
+            exe_extension: exeExtension
+          };
+          
+          // Browser-based store using localStorage
+          // The Tauri Store plugin uses resource IDs (rid) to reference stores
+          var browserStores = {};       // path -> store data
+          var ridToPath = {};           // rid -> path mapping
+          var pathToRid = {};           // path -> rid mapping
+          var nextRid = 1;              // resource ID counter
+          
+          function getStoreKey(path) {
+            return "opencode-store:" + path;
+          }
+          function loadStore(path) {
+            if (!browserStores[path]) {
+              try {
+                var stored = localStorage.getItem(getStoreKey(path));
+                browserStores[path] = stored ? JSON.parse(stored) : {};
+              } catch (e) {
+                browserStores[path] = {};
+              }
+            }
+            return browserStores[path];
+          }
+          function saveStore(path) {
+            try {
+              localStorage.setItem(getStoreKey(path), JSON.stringify(browserStores[path] || {}));
+            } catch (e) {
+              console.warn("[Browser Mode] Failed to save store:", path, e);
+            }
+          }
+          function getPathByRid(rid) {
+            return ridToPath[rid];
+          }
+          function getOrCreateRid(path) {
+            if (pathToRid[path]) return pathToRid[path];
+            var rid = nextRid++;
+            ridToPath[rid] = path;
+            pathToRid[path] = rid;
+            return rid;
+          }
+          
+          // Comprehensive Tauri internals mock
+          window.__TAURI_INTERNALS__ = {
+            transformCallback: function(callback, once) {
+              return 0;
+            },
+            invoke: function(cmd, args) {
+              console.log("[Browser Mode] Mock invoke:", cmd, args);
+              
+              // OS plugin async mocks
+              if (cmd === "plugin:os|hostname") return Promise.resolve("localhost");
+              if (cmd === "plugin:os|locale") return Promise.resolve("en-US");
+              
+              // App commands
+              if (cmd === "ensure_server_started") return Promise.resolve("ready");
+              if (cmd === "get_sidecar_logs") return Promise.resolve([]);
+              
+              // Store plugin mocks - using rid-based API like real Tauri plugin
+              if (cmd === "plugin:store|load") {
+                var path = args && args.path;
+                if (path) {
+                  loadStore(path);
+                  var rid = getOrCreateRid(path);
+                  console.log("[Browser Mode] Store load:", path, "=> rid:", rid);
+                  return Promise.resolve(rid);
+                }
+                return Promise.resolve(null);
+              }
+              if (cmd === "plugin:store|get_store") {
+                var path = args && args.path;
+                var rid = pathToRid[path];
+                console.log("[Browser Mode] Store get_store:", path, "=> rid:", rid);
+                return Promise.resolve(rid || null);
+              }
+              if (cmd === "plugin:store|get") {
+                var rid = args && args.rid;
+                var key = args && args.key;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                var value = store[key];
+                var exists = key in store;
+                console.log("[Browser Mode] Store get: rid:", rid, "path:", path, "key:", key, "=>", value, "exists:", exists);
+                // Tauri plugin returns [value, exists] tuple
+                return Promise.resolve([value, exists]);
+              }
+              if (cmd === "plugin:store|set") {
+                var rid = args && args.rid;
+                var key = args && args.key;
+                var value = args && args.value;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                store[key] = value;
+                saveStore(path);
+                console.log("[Browser Mode] Store set: rid:", rid, "path:", path, "key:", key, "=>", value);
+                return Promise.resolve();
+              }
+              if (cmd === "plugin:store|delete") {
+                var rid = args && args.rid;
+                var key = args && args.key;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                var existed = key in store;
+                delete store[key];
+                saveStore(path);
+                return Promise.resolve(existed);
+              }
+              if (cmd === "plugin:store|save") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                if (path) saveStore(path);
+                return Promise.resolve();
+              }
+              if (cmd === "plugin:store|clear") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                if (path) {
+                  browserStores[path] = {};
+                  saveStore(path);
+                }
+                return Promise.resolve();
+              }
+              if (cmd === "plugin:store|reset") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                if (path) {
+                  browserStores[path] = {};
+                  saveStore(path);
+                }
+                return Promise.resolve();
+              }
+              if (cmd === "plugin:store|keys") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                return Promise.resolve(Object.keys(store));
+              }
+              if (cmd === "plugin:store|values") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                return Promise.resolve(Object.values(store));
+              }
+              if (cmd === "plugin:store|entries") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                return Promise.resolve(Object.entries(store));
+              }
+              if (cmd === "plugin:store|length") {
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                return Promise.resolve(Object.keys(store).length);
+              }
+              if (cmd === "plugin:store|has") {
+                var rid = args && args.rid;
+                var key = args && args.key;
+                var path = getPathByRid(rid);
+                var store = loadStore(path);
+                return Promise.resolve(key in store);
+              }
+              if (cmd === "plugin:store|reload") {
+                // Reload from localStorage
+                var rid = args && args.rid;
+                var path = getPathByRid(rid);
+                if (path) {
+                  delete browserStores[path];
+                  loadStore(path);
+                }
+                return Promise.resolve();
+              }
+              
+              // Resource plugin mocks (for Store.close())
+              if (cmd === "plugin:resources|close") {
+                var rid = args && args.rid;
+                // Clean up rid mappings if this is a store
+                var path = getPathByRid(rid);
+                if (path) {
+                  delete ridToPath[rid];
+                  delete pathToRid[path];
+                }
+                return Promise.resolve();
+              }
+              
+              // Window plugin mocks
+              if (cmd === "plugin:window|is_maximized") return Promise.resolve(false);
+              if (cmd === "plugin:window|is_minimized") return Promise.resolve(false);
+              if (cmd === "plugin:window|is_fullscreen") return Promise.resolve(false);
+              if (cmd === "plugin:window|maximize") return Promise.resolve();
+              if (cmd === "plugin:window|minimize") return Promise.resolve();
+              if (cmd === "plugin:window|close") return Promise.resolve();
+              if (cmd === "plugin:window|set_title") return Promise.resolve();
+              
+              // Process plugin mocks
+              if (cmd === "plugin:process|exit") return Promise.resolve();
+              if (cmd === "plugin:process|restart") return Promise.resolve();
+              
+              // Shell plugin mocks
+              if (cmd === "plugin:shell|open") {
+                // Actually open the URL in browser
+                if (args && args.path) window.open(args.path, "_blank");
+                return Promise.resolve();
+              }
+              
+              // Updater mocks
+              if (cmd === "plugin:updater|check") return Promise.resolve(null);
+              
+              // Notification mocks  
+              if (cmd === "plugin:notification|is_permission_granted") return Promise.resolve(true);
+              if (cmd === "plugin:notification|request_permission") return Promise.resolve("granted");
+              if (cmd === "plugin:notification|notify") return Promise.resolve();
+              
+              // Menu mocks
+              if (cmd.startsWith("plugin:menu|")) return Promise.resolve();
+              
+              // Clipboard mocks
+              if (cmd === "plugin:clipboard-manager|write_text") return Promise.resolve();
+              if (cmd === "plugin:clipboard-manager|read_text") return Promise.resolve("");
+              
+              console.warn("[Browser Mode] Unhandled invoke:", cmd);
+              return Promise.resolve(null);
+            },
+            metadata: {
+              currentWindow: { label: "main" },
+              currentWebview: { label: "main" }
+            }
+          };
+          
+          // Also set __TAURI__ for older API compatibility
+          window.__TAURI__ = window.__TAURI_INTERNALS__;
+          
+          console.log("[Browser Mode] Mocks initialized:", window.__OPENCODE__);
+          console.log("[Browser Mode] OS Plugin internals:", window.__TAURI_OS_PLUGIN_INTERNALS__);
+        }
+      })();
+    </script>
     <script id="oc-debug-preload">
       // Debug: Log __OPENCODE__ state at startup
       console.log("[HTML Preload] window.__OPENCODE__:", window.__OPENCODE__);
       console.log("[HTML Preload] location.origin:", window.location.origin);
-      // Poll for __OPENCODE__ to detect when it's set
+      // Poll for __OPENCODE__ to detect when it's set (only needed in Tauri mode)
       if (!window.__OPENCODE__) {
         console.log("[HTML Preload] __OPENCODE__ not set yet, will poll...");
         var pollCount = 0;

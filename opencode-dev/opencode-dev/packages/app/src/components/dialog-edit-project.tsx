@@ -8,6 +8,7 @@ import { createStore } from "solid-js/store"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { type LocalProject, getAvatarColors } from "@/context/layout"
 import { Avatar } from "@opencode-ai/ui/avatar"
+import { useI18n } from "@/i18n"
 
 const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] as const
 
@@ -19,6 +20,7 @@ function getFilename(input: string) {
 export function DialogEditProject(props: { project: LocalProject }) {
   const dialog = useDialog()
   const globalSDK = useGlobalSDK()
+  const { t } = useI18n()
 
   const folderName = createMemo(() => getFilename(props.project.worktree))
   const defaultName = createMemo(() => props.project.name || folderName())
@@ -81,20 +83,20 @@ export function DialogEditProject(props: { project: LocalProject }) {
   }
 
   return (
-    <Dialog title="Edit project">
+    <Dialog title={t("project.editProject")}>
       <form onSubmit={handleSubmit} class="flex flex-col gap-6 px-2.5 pb-3">
         <div class="flex flex-col gap-4">
           <TextField
             autofocus
             type="text"
-            label="Name"
+            label={t("project.name")}
             placeholder={folderName()}
             value={store.name}
             onChange={(v) => setStore("name", v)}
           />
 
           <div class="flex flex-col gap-2">
-            <label class="text-12-medium text-text-weak">Icon</label>
+            <label class="text-12-medium text-text-weak">{t("project.icon")}</label>
             <div class="flex gap-3 items-start">
               <div class="relative">
                 <div
@@ -120,7 +122,7 @@ export function DialogEditProject(props: { project: LocalProject }) {
                       </div>
                     }
                   >
-                    <img src={store.iconUrl} alt="Project icon" class="size-full object-cover" />
+                    <img src={store.iconUrl} alt={t("file.projectIcon")} class="size-full object-cover" />
                   </Show>
                 </div>
                 <Show when={store.iconUrl}>
@@ -135,15 +137,15 @@ export function DialogEditProject(props: { project: LocalProject }) {
               </div>
               <input id="icon-upload" type="file" accept="image/*" class="hidden" onChange={handleInputChange} />
               <div class="flex flex-col gap-1.5 text-12-regular text-text-weak">
-                <span>Click or drag an image</span>
-                <span>Recommended: 128x128px</span>
+                <span>{t("project.clickOrDragImage")}</span>
+                <span>{t("project.recommendedSize")}</span>
               </div>
             </div>
           </div>
 
           <Show when={!store.iconUrl}>
             <div class="flex flex-col gap-2">
-              <label class="text-12-medium text-text-weak">Color</label>
+              <label class="text-12-medium text-text-weak">{t("project.color")}</label>
               <div class="flex gap-2">
                 <For each={AVATAR_COLOR_KEYS}>
                   {(color) => (
@@ -168,10 +170,10 @@ export function DialogEditProject(props: { project: LocalProject }) {
 
         <div class="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="large" onClick={() => dialog.close()}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button type="submit" variant="primary" size="large" disabled={store.saving}>
-            {store.saving ? "Saving..." : "Save"}
+            {store.saving ? t("common.saving") : t("common.save")}
           </Button>
         </div>
       </form>

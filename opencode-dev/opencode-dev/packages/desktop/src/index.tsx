@@ -13,6 +13,7 @@ import { AsyncStorage } from "@solid-primitives/storage"
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http"
 import { Store } from "@tauri-apps/plugin-store"
 import { Logo } from "@opencode-ai/ui/logo"
+import { Spinner } from "@opencode-ai/ui/spinner"
 import { Suspense, createResource, ParentProps } from "solid-js"
 
 import { UPDATER_ENABLED } from "./updater"
@@ -346,10 +347,17 @@ function ServerGate(props: ParentProps) {
       when={status.state !== "pending"}
       fallback={
         <div class="h-screen w-screen flex flex-col items-center justify-center bg-background-base">
-          <Logo class="w-xl opacity-12 animate-pulse" />
-          <div class="mt-8 text-14-regular text-text-weak">Starting server...</div>
-          <div class="mt-2 text-12-regular text-text-weakest">
-            Port: {window.__OPENCODE__?.port ?? "unknown"}
+          <div class="relative">
+            <Logo class="w-xl opacity-12" />
+            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2">
+              <Spinner class="size-6 text-text-weak" />
+            </div>
+          </div>
+          <div class="mt-10 flex flex-col items-center gap-2">
+            <div class="text-14-regular text-text-weak">Starting server...</div>
+            <div class="text-12-mono text-text-weakest">
+              Port: {window.__OPENCODE__?.port ?? "unknown"}
+            </div>
           </div>
         </div>
       }

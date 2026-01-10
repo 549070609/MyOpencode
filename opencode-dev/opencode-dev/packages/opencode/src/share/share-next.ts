@@ -6,16 +6,47 @@ import { Session } from "@/session"
 import { MessageV2 } from "@/session/message-v2"
 import { Storage } from "@/storage/storage"
 import { Log } from "@/util/log"
+import { Flag } from "@/flag/flag"
 import type * as SDK from "@opencode-ai/sdk/v2"
 
 export namespace ShareNext {
   const log = Log.create({ service: "share-next" })
 
+  /** 
+   * 检查分享功能是否被禁用
+   * - 离线模式下禁用
+   * - 显式设置 OPENCODE_DISABLE_SHARE=true 时禁用
+   * - 非企业版默认禁用（除非显式设置 OPENCODE_ENABLE_SHARE=true）
+   */
+  async function isDisabled() {
+    if (Flag.OPENCODE_OFFLINE || Flag.OPENCODE_DISABLE_SHARE) {
+      return true
+    }
+    // 检查是否为企业版（有 enterprise.url 配置）
+    const config = await Config.get()
+    const isEnterprise = !!config.enterprise?.url
+    // 企业版默认启用分享，非企业版默认禁用（除非显式启用）
+    if (isEnterprise) {
+      return false
+    }
+    // 非企业版：默认禁用，除非显式设置 OPENCODE_ENABLE_SHARE=true
+    return !Flag.OPENCODE_ENABLE_SHARE
+  }
+
   async function url() {
+    if (await isDisabled()) {
+      return null
+    }
     return Config.get().then((x) => x.enterprise?.url ?? "https://opncd.ai")
   }
 
   export async function init() {
+    // 离线模式或禁用分享时，跳过所有分享相关的事件订阅
+    if (await isDisabled()) {
+      log.info("share disabled (offline mode, non-enterprise, or OPENCODE_DISABLE_SHARE=true)")
+      return
+    }
+
     Bus.subscribe(Session.Event.Updated, async (evt) => {
       await sync(evt.properties.info.id, [
         {
@@ -63,8 +94,22 @@ export namespace ShareNext {
   }
 
   export async function create(sessionID: string) {
+    // 离线模式或禁用分享时，直接返回错误
+    if (await isDisabled()) {
+      const config = await Config.get()
+      const isEnterprise = !!config.enterprise?.url
+      if (!isEnterprise) {
+        throw new Error("Share is only available for enterprise users. Configure enterprise.url in your config or set OPENCODE_ENABLE_SHARE=true to enable.")
+      }
+      throw new Error("Share is disabled. Set OPENCODE_OFFLINE=false or OPENCODE_DISABLE_SHARE=false to enable.")
+    }
+
     log.info("creating share", { sessionID })
-    const result = await fetch(`${await url()}/api/share`, {
+    const baseUrl = await url()
+    if (!baseUrl) {
+      throw new Error("Share URL is not available")
+    }
+    const result = await fetch(`${baseUrl}/api/share`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

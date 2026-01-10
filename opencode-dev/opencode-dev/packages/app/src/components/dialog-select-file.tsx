@@ -7,19 +7,21 @@ import { useParams } from "@solidjs/router"
 import { createMemo } from "solid-js"
 import { useLayout } from "@/context/layout"
 import { useFile } from "@/context/file"
+import { useI18n } from "@/i18n"
 
 export function DialogSelectFile() {
   const layout = useLayout()
   const file = useFile()
   const dialog = useDialog()
   const params = useParams()
+  const { t } = useI18n()
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const tabs = createMemo(() => layout.tabs(sessionKey()))
   return (
-    <Dialog title="Select file">
+    <Dialog title={t("file.selectFile")}>
       <List
-        search={{ placeholder: "Search files", autofocus: true }}
-        emptyMessage="No files found"
+        search={{ placeholder: t("file.searchFiles"), autofocus: true }}
+        emptyMessage={t("file.noFilesFound")}
         items={file.searchFiles}
         key={(x) => x}
         onSelect={(path) => {

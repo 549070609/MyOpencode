@@ -5,3 +5,9 @@
     cursor: default;
   }
 }
+
+/* 大尺寸对话框样式 - 用于自定义服务商等内容较多的表单 */
+[data-slot="dialog-container"]:has([data-slot="dialog-content"].dialog-large) {
+  width: min(calc(100vw - 32px), 560px);
+  height: min(calc(100vh - 32px), 720px);
+}
